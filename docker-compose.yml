@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: geomarket-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: geomarket
+      POSTGRES_PASSWORD: geomarket
+      POSTGRES_DB: geomarket
+    ports:
+      - "5432:5432"
+    volumes:
+      - geomarket-db-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: geomarket-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - geomarket-redis-data:/data
+
+volumes:
+  geomarket-db-data:
+  geomarket-redis-data:
