@@ -1,32 +1,137 @@
 @import "tailwindcss";
 
+/* ----------------------------------------------------------------------------
+   immo·mg design tokens (DESIGN.md §2-4). Declared on :root and mirrored on
+   .immo so the future Tweaks panel can override them globally on the .immo
+   scope without touching components.
+---------------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Navy */
+  --navy: #0d2137;
+  --navy-800: #112a45;
+  --navy-700: #1a3a5c;
+  --navy-600: #2b5176;
+  --navy-300: #6f8aa6;
+  --navy-100: #d7e0ea;
+
+  /* Gold (accent) */
+  --gold: #c9a84c;
+  --gold-700: #a8893a;
+  --gold-soft: #ede2c0;
+  --gold-tint: #f7f1de;
+
+  /* Paper / surfaces */
+  --paper: #fafaf8;
+  --paper-2: #f3f1ea;
+  --line: #e7e3d8;
+  --line-2: #ece9e0;
+
+  /* Ink (text) */
+  --ink: #0d2137;
+  --ink-2: #43525f;
+  --muted: #8a93a0;
+
+  /* Semantic: equipment present (green) / absent (amber). No alarming red. */
+  --present: oklch(0.52 0.085 150);
+  --present-bg: oklch(0.95 0.03 150);
+  --absent: oklch(0.66 0.1 70);
+  --absent-bg: oklch(0.95 0.045 80);
+
+  /* Shadows (always navy-tinted, never pure grey) */
+  --shadow-card: 0 14px 30px -18px rgba(13, 33, 55, 0.22);
+  --shadow-top-match: 0 0 0 1px var(--gold), 0 16px 34px -20px rgba(201, 168, 76, 0.5);
+  --shadow-drawer: 0 -12px 50px rgba(13, 33, 55, 0.3);
 }
 
+/* The .immo scope inherits the same tokens; Tweaks overrides will target it. */
+.immo {
+  --navy: #0d2137;
+  --gold: #c9a84c;
+  --gold-700: #a8893a;
+  --gold-soft: #ede2c0;
+  --gold-tint: #f7f1de;
+  --paper: #fafaf8;
+  --paper-2: #f3f1ea;
+}
+
+/* ----------------------------------------------------------------------------
+   Expose tokens + next/font variables as Tailwind utilities.
+   Enables bg-navy, text-gold, border-line, font-display, font-sans, etc.
+---------------------------------------------------------------------------- */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-navy: var(--navy);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-navy-600: var(--navy-600);
+  --color-navy-300: var(--navy-300);
+  --color-navy-100: var(--navy-100);
+
+  --color-gold: var(--gold);
+  --color-gold-700: var(--gold-700);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-tint: var(--gold-tint);
+
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+
+  --color-present: var(--present);
+  --color-present-bg: var(--present-bg);
+  --color-absent: var(--absent);
+  --color-absent-bg: var(--absent-bg);
+
+  --font-display: var(--font-playfair);
+  --font-sans: var(--font-hanken);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ----------------------------------------------------------------------------
+   Base
+---------------------------------------------------------------------------- */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-hanken), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures for data (prices, scores). */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 24px screen gutter (DESIGN §4). */
+.pad {
+  padding-inline: 24px;
 }
 
 @layer components {
+  /* Reworked form input on the immo palette. */
   .input {
-    @apply w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900;
+    @apply w-full rounded-[12px] border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-navy;
+  }
+
+  /* Striped photo placeholder (DESIGN §6): navy ground + diagonal hatching. */
+  .ph {
+    background-color: var(--navy);
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.05) 0,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+    color: var(--navy-300);
+    font-family: ui-monospace, monospace;
+    font-size: 10.5px;
+  }
+
+  /* Confidence/score bar fill: the one allowed decorative gradient (DESIGN §2). */
+  .score-fill {
+    background-image: linear-gradient(90deg, var(--gold-700), var(--gold));
   }
 }
