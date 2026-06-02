@@ -3,8 +3,8 @@ import { Playfair_Display, Hanken_Grotesk } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import LogoutButton from "@/components/LogoutButton";
-import ChatFab from "@/components/immo/ChatFab";
 import CompareBar from "@/components/immo/CompareBar";
+import MainNav from "@/components/immo/MainNav";
 import TabBar from "@/components/immo/TabBar";
 import { getCurrentSession } from "@/lib/auth";
 
@@ -40,16 +40,19 @@ export default async function RootLayout({
       className={`${playfair.variable} ${hanken.variable} immo h-full antialiased`}
     >
       <body className="min-h-full bg-paper text-ink">
-        <header className="flex h-14 items-center justify-between bg-navy px-6 text-paper">
-          <Link
-            href="/"
-            className="font-display text-lg font-semibold tracking-tight"
-          >
-            immo<span className="text-gold">·</span>mg
-          </Link>
+        <header className="flex h-14 items-center justify-between gap-4 bg-navy px-4 text-paper md:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-4 md:gap-8">
+            <Link
+              href="/"
+              className="shrink-0 font-display text-lg font-semibold tracking-tight"
+            >
+              immo<span className="text-gold">·</span>mg
+            </Link>
+            <MainNav />
+          </div>
           <nav
-            aria-label="Navigation principale"
-            className="flex items-center gap-4 text-sm"
+            aria-label="Compte et actions"
+            className="flex shrink-0 items-center gap-3 text-sm md:gap-4"
           >
             {user ? (
               <>
@@ -97,7 +100,6 @@ export default async function RootLayout({
         </header>
         <div className="pb-14 md:pb-0">{children}</div>
         <CompareBar />
-        <ChatFab />
         <TabBar />
       </body>
     </html>

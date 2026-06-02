@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Ico from "./Ico";
 import { APP_NAV } from "./nav-items";
 
-export default function TabBar() {
+/**
+ * Desktop/tablet primary navigation — mirrors the mobile TabBar routes.
+ */
+export default function MainNav() {
   const pathname = usePathname();
 
   return (
     <nav
-      aria-label="Navigation mobile"
-      className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-stretch border-t border-navy-700 bg-navy text-paper md:hidden"
+      aria-label="Sections principales"
+      className="hidden items-center gap-1 md:flex"
     >
       {APP_NAV.map((item) => {
         const active = item.isActive(pathname);
@@ -20,11 +22,12 @@ export default function TabBar() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-              active ? "text-gold" : "text-navy-300"
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+              active
+                ? "bg-gold text-navy"
+                : "text-navy-100 hover:bg-navy-700 hover:text-gold"
             }`}
           >
-            <Ico name={item.icon} size={20} />
             {item.label}
           </Link>
         );
