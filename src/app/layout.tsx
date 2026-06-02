@@ -3,6 +3,7 @@ import { Playfair_Display, Hanken_Grotesk } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import LogoutButton from "@/components/LogoutButton";
+import ChatFab from "@/components/immo/ChatFab";
 import TabBar from "@/components/immo/TabBar";
 import { getCurrentSession } from "@/lib/auth";
 
@@ -94,6 +95,7 @@ export default async function RootLayout({
           </nav>
         </header>
         <div className="pb-14 md:pb-0">{children}</div>
+        <ChatFab />
         <TabBar />
       </body>
     </html>

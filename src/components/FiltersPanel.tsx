@@ -1,24 +1,9 @@
 "use client";
 
 import { AMENITIES, AMENITY_LABELS, type Amenity } from "@/lib/amenities";
+import { type Filters, type SortKey } from "@/lib/search-filters";
 
-export type SortKey =
-  | "relevance"
-  | "price_asc"
-  | "price_desc"
-  | "surface"
-  | "confidence";
-
-export type Filters = {
-  txn?: "sale" | "rent";
-  propertyType?: "house" | "apartment" | "land" | "commercial" | "other";
-  minPrice?: number;
-  maxPrice?: number;
-  minSurface?: number;
-  minRooms?: number;
-  amenities?: Amenity[];
-  sort?: SortKey;
-};
+export type { Filters, SortKey };
 
 type Props = {
   value: Filters;

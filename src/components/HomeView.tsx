@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -9,49 +10,33 @@ import {
   useState,
   useTransition,
 } from "react";
+import { type Filters, parseFilters, toParams } from "@/lib/search-filters";
+import ConversationalBar from "./immo/ConversationalBar";
 import PropertyCard, {
   type PropertySummary,
 } from "./immo/PropertyCard";
-import FiltersPanel, { type Filters } from "./FiltersPanel";
+import FiltersPanel from "./FiltersPanel";
 import type { Bbox, MapMarker } from "./Map";
 
 const Map = dynamic(() => import("./Map"), { ssr: false });
 
 type Listing = PropertySummary & { lng: number; lat: number };
 
-function buildQuery(filters: Filters, bbox: Bbox | null): string {
-  const params = new URLSearchParams();
-  if (bbox) {
-    params.set(
-      "bbox",
-      `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`,
-    );
-  }
-  if (filters.txn) params.set("txn", filters.txn);
-  if (filters.propertyType) params.set("propertyType", filters.propertyType);
-  if (filters.minPrice !== undefined)
-    params.set("minPrice", String(filters.minPrice));
-  if (filters.maxPrice !== undefined)
-    params.set("maxPrice", String(filters.maxPrice));
-  if (filters.minSurface !== undefined)
-    params.set("minSurface", String(filters.minSurface));
-  if (filters.minRooms !== undefined)
-    params.set("minRooms", String(filters.minRooms));
-  if (filters.amenities?.length)
-    params.set("amenities", filters.amenities.join(","));
-  if (filters.sort && filters.sort !== "relevance")
-    params.set("sort", filters.sort);
-  return params.toString();
-}
-
 export default function HomeView() {
-  const [filters, setFilters] = useState<Filters>({});
+  const searchParams = useSearchParams();
+  // Seed from the URL once (deep links from chat / the Carte tab).
+  const [filters, setFilters] = useState<Filters>(() =>
+    parseFilters((k) => searchParams.get(k)),
+  );
   const [bbox, setBbox] = useState<Bbox | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, startTransition] = useTransition();
   const requestSeq = useRef(0);
 
-  const query = useMemo(() => buildQuery(filters, bbox), [filters, bbox]);
+  const query = useMemo(
+    () => toParams(filters, bbox).toString(),
+    [filters, bbox],
+  );
 
   useEffect(() => {
     if (!bbox) return;
@@ -100,7 +85,10 @@ export default function HomeView() {
 
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] flex-col md:h-[calc(100dvh-3.5rem)]">
-      <div className="border-b border-line bg-paper px-4 py-3 md:px-6">
+      <div className="space-y-3 border-b border-line bg-paper px-4 py-3 md:px-6">
+        <ConversationalBar
+          onFilters={(f) => setFilters((prev) => ({ ...prev, ...f }))}
+        />
         <FiltersPanel value={filters} onChange={setFilters} />
       </div>
       <div className="grid flex-1 grid-rows-[45dvh_1fr] overflow-hidden md:grid-cols-[1fr_400px] md:grid-rows-1">
