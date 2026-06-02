@@ -12,7 +12,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "worker": "tsx --env-file=.env.local scripts/worker.ts",
-    "scrape:once": "tsx --env-file=.env.local scripts/enqueue-once.ts"
+    "scrape:once": "tsx --env-file=.env.local scripts/enqueue-once.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -43,6 +45,7 @@
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.6"
   }
 }
