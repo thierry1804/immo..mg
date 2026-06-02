@@ -1,3 +1,4 @@
+import type { Amenity } from "@/lib/amenities";
 import type { propertyType, transactionType } from "@/db/schema";
 
 export type ScraperSourceId = string;
@@ -35,6 +36,8 @@ export type NormalizedListing = {
   rooms: number;
   imageUrls: string[];
   rawHash: string;
+  amenities: Amenity[];
+  fokontany: string | null;
 };
 
 export interface Scraper {

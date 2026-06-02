@@ -94,12 +94,49 @@ export const listings = pgTable(
     externalId: text("external_id"),
     scrapedAt: timestamp("scraped_at", { withTimezone: true }),
     rawHash: text("raw_hash"),
+    fokontany: text("fokontany"),
+    amenities: text("amenities").array().notNull().default([]),
+    confidenceScore: integer("confidence_score"),
+    confidenceBreakdown: jsonb("confidence_breakdown").$type<
+      { key: string; label: string; ok: boolean; weight: number }[]
+    >(),
+    pricePerSqm: bigint("price_per_sqm", { mode: "number" }),
+    estimatedRealCost: bigint("estimated_real_cost", { mode: "number" }),
+    canonicalId: text("canonical_id"),
+    sources: jsonb("sources")
+      .$type<{ source: string; url: string | null }[]>()
+      .notNull()
+      .default([]),
+    isDuplicate: boolean("is_duplicate").notNull().default(false),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("listings_location_idx").using("gist", t.location)],
+  (t) => [
+    index("listings_location_idx").using("gist", t.location),
+    index("listings_amenities_idx").using("gin", t.amenities),
+  ],
 );
+
+// Declared compatibility profile (M5). One row per user; all preference fields
+// optional — a dimension left blank scores neutrally in computeCompatibility.
+export const userProfiles = pgTable("user_profiles", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  budgetMin: bigint("budget_min", { mode: "number" }),
+  budgetMax: bigint("budget_max", { mode: "number" }),
+  transactionType: transactionType("transaction_type"),
+  quartiers: text("quartiers").array().notNull().default([]),
+  mustHave: text("must_have").array().notNull().default([]),
+  propertyTypes: text("property_types").array().notNull().default([]),
+  minSurface: integer("min_surface"),
+  alertThreshold: integer("alert_threshold").notNull().default(80),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const propertyDetails = pgTable("property_details", {
   listingId: text("listing_id")
@@ -164,3 +201,4 @@ export type Listing = typeof listings.$inferSelect;
 export type PropertyDetails = typeof propertyDetails.$inferSelect;
 export type ListingPhoto = typeof listingPhotos.$inferSelect;
 export type ScrapeSource = typeof scrapeSources.$inferSelect;
+export type UserProfile = typeof userProfiles.$inferSelect;

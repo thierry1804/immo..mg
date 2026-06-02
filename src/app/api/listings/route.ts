@@ -1,13 +1,27 @@
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { listingPhotos, listings, propertyDetails } from "@/db/schema";
+import {
+  listingPhotos,
+  listings,
+  propertyDetails,
+  userProfiles,
+} from "@/db/schema";
+import { AMENITIES, type Amenity } from "@/lib/amenities";
 import { getCurrentSession } from "@/lib/auth";
+import {
+  computeCompatibility,
+  type CompatProfile,
+} from "@/lib/compatibility";
+import { computeConfidence } from "@/lib/confidence";
+import { resolveFokontany } from "@/lib/fokontany";
 import { parseBbox } from "@/lib/geo";
+import { estimateRealCost } from "@/lib/real-cost";
 import {
   listingInputSchema,
   listingsQuerySchema,
 } from "@/lib/validation";
+import { pricePerSqm } from "@/scrapers/enrich";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -35,6 +49,32 @@ export async function GET(req: Request) {
     conditions.push(sql`${propertyDetails.surfaceM2} >= ${q.minSurface}`);
   if (q.minRooms !== undefined)
     conditions.push(sql`${propertyDetails.rooms} >= ${q.minRooms}`);
+  if (q.fokontany) conditions.push(eq(listings.fokontany, q.fokontany));
+
+  // Hide duplicates that have been folded into a canonical listing.
+  conditions.push(eq(listings.isDuplicate, false));
+
+  // amenities: CSV of canonical keys; require the listing to have all of them.
+  const requestedAmenities = (q.amenities ?? "")
+    .split(",")
+    .map((a) => a.trim())
+    .filter((a): a is Amenity => (AMENITIES as readonly string[]).includes(a));
+  if (requestedAmenities.length > 0) {
+    conditions.push(
+      sql`${listings.amenities} @> ${sql.raw(
+        `ARRAY[${requestedAmenities.map((a) => `'${a}'`).join(",")}]::text[]`,
+      )}`,
+    );
+  }
+
+  const orderBy = {
+    price_asc: sql`${listings.price} asc`,
+    price_desc: sql`${listings.price} desc`,
+    surface: sql`${propertyDetails.surfaceM2} desc nulls last`,
+    confidence: sql`${listings.confidenceScore} desc nulls last`,
+    compat: sql`${listings.confidenceScore} desc nulls last`, // M5 refines
+    relevance: sql`${listings.createdAt} desc`,
+  }[q.sort ?? "relevance"];
 
   const rows = await db
     .select({
@@ -48,14 +88,69 @@ export async function GET(req: Request) {
       lat: sql<number>`ST_Y(${listings.location}::geometry)`,
       surfaceM2: propertyDetails.surfaceM2,
       rooms: propertyDetails.rooms,
+      fokontany: listings.fokontany,
+      amenities: listings.amenities,
+      confidenceScore: listings.confidenceScore,
+      pricePerSqm: listings.pricePerSqm,
+      sourceCount: sql<number>`coalesce(jsonb_array_length(${listings.sources}), 0)`,
+      photo: sql<
+        string | null
+      >`(select p.path from ${listingPhotos} p where p.listing_id = ${listings.id} order by p.display_order limit 1)`,
     })
     .from(listings)
     .innerJoin(propertyDetails, eq(propertyDetails.listingId, listings.id))
     .where(and(...conditions))
-    .orderBy(sql`${listings.createdAt} desc`)
+    .orderBy(orderBy)
     .limit(200);
 
-  return NextResponse.json({ listings: rows });
+  // Declared compatibility (M5): only when the signed-in user has a profile.
+  const profile = await currentProfile();
+  if (!profile) {
+    return NextResponse.json({
+      listings: rows.map((r) => ({ ...r, compatibility: null })),
+    });
+  }
+
+  let scored = rows.map((r) => ({
+    ...r,
+    compatibility: computeCompatibility(profile, {
+      price: r.price,
+      transactionType: r.transactionType,
+      fokontany: r.fokontany,
+      amenities: (r.amenities ?? []) as Amenity[],
+      propertyType: r.propertyType,
+      surfaceM2: r.surfaceM2,
+    }).score,
+  }));
+
+  // With a profile, "compat" sort (and the default ordering) ranks by fit.
+  if (q.sort === "compat" || q.sort === undefined) {
+    scored = scored.sort((a, b) => b.compatibility - a.compatibility);
+  }
+
+  return NextResponse.json({ listings: scored });
+}
+
+/** The signed-in user's compatibility profile, or null if none/anonymous. */
+async function currentProfile(): Promise<CompatProfile | null> {
+  const { user } = await getCurrentSession();
+  if (!user) return null;
+  const rows = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, user.id))
+    .limit(1);
+  const p = rows[0];
+  if (!p) return null;
+  return {
+    budgetMin: p.budgetMin,
+    budgetMax: p.budgetMax,
+    transactionType: p.transactionType,
+    quartiers: p.quartiers,
+    mustHave: p.mustHave as Amenity[],
+    propertyTypes: p.propertyTypes,
+    minSurface: p.minSurface,
+  };
 }
 
 export async function POST(req: Request) {
@@ -74,6 +169,23 @@ export async function POST(req: Request) {
   const input = parsed.data;
   const id = crypto.randomUUID();
 
+  const fokontany = resolveFokontany(input.lng, input.lat);
+  const realCost = estimateRealCost({
+    price: input.price,
+    transactionType: input.transactionType,
+    surfaceM2: input.surfaceM2,
+    amenities: input.amenities,
+  });
+  const { score, breakdown } = computeConfidence({
+    photoCount: input.photoPaths.length,
+    surfaceM2: input.surfaceM2,
+    fokontany,
+    ageDays: 0,
+    price: input.price,
+    neighborhoodMedianPrice: null,
+    sourceCount: 1,
+  });
+
   await db.transaction(async (tx) => {
     await tx.insert(listings).values({
       id,
@@ -85,6 +197,14 @@ export async function POST(req: Request) {
       price: input.price,
       address: input.address,
       location: { lng: input.lng, lat: input.lat },
+      fokontany,
+      amenities: input.amenities,
+      confidenceScore: score,
+      confidenceBreakdown: breakdown,
+      pricePerSqm: pricePerSqm(input.price, input.surfaceM2),
+      estimatedRealCost: realCost?.total ?? null,
+      sources: [{ source: "user", url: null }],
+      lastSeenAt: new Date(),
     });
     await tx.insert(propertyDetails).values({
       listingId: id,

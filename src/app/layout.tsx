@@ -1,24 +1,31 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Playfair_Display, Hanken_Grotesk } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import LogoutButton from "@/components/LogoutButton";
+import ChatFab from "@/components/immo/ChatFab";
+import CompareBar from "@/components/immo/CompareBar";
+import TabBar from "@/components/immo/TabBar";
 import { getCurrentSession } from "@/lib/auth";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Variable fonts: one file covering the full weight axis (Next.js recommends
+// variable fonts). Omitting `weight` selects the variable file automatically.
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "GeoMarket",
+  title: "immo·mg — Conseiller immobilier IA",
   description:
-    "Explorez biens, véhicules et services disponibles autour de vous.",
+    "Agrège, dédoublonne et enrichit les annonces immobilières d'Antananarivo. Confiance, coût réel et recommandation.",
 };
 
 export default async function RootLayout({
@@ -30,27 +37,33 @@ export default async function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${playfair.variable} ${hanken.variable} immo h-full antialiased`}
     >
-      <body className="min-h-full bg-white text-zinc-900">
-        <header className="flex h-13 items-center justify-between border-b border-zinc-200 px-4">
-          <Link href="/" className="text-sm font-semibold">
-            GeoMarket
+      <body className="min-h-full bg-paper text-ink">
+        <header className="flex h-14 items-center justify-between bg-navy px-6 text-paper">
+          <Link
+            href="/"
+            className="font-display text-lg font-semibold tracking-tight"
+          >
+            immo<span className="text-gold">·</span>mg
           </Link>
-          <nav className="flex items-center gap-3 text-sm">
+          <nav
+            aria-label="Navigation principale"
+            className="flex items-center gap-4 text-sm"
+          >
             {user ? (
               <>
                 {user.role === "admin" && (
                   <>
                     <Link
                       href="/admin/sources"
-                      className="text-zinc-700 hover:underline"
+                      className="hidden text-navy-100 hover:text-gold sm:inline"
                     >
                       Sources
                     </Link>
                     <Link
                       href="/admin/moderation"
-                      className="text-zinc-700 hover:underline"
+                      className="hidden text-navy-100 hover:text-gold sm:inline"
                     >
                       Modération
                     </Link>
@@ -58,23 +71,23 @@ export default async function RootLayout({
                 )}
                 <Link
                   href="/listings/new"
-                  className="rounded bg-zinc-900 px-3 py-1.5 text-white"
+                  className="rounded-full bg-gold px-3 py-1.5 font-semibold text-navy"
                 >
                   + Publier
                 </Link>
-                <span className="hidden text-zinc-600 sm:inline">
+                <span className="hidden text-navy-300 sm:inline">
                   {user.email}
                 </span>
                 <LogoutButton />
               </>
             ) : (
               <>
-                <Link href="/login" className="text-zinc-700 hover:underline">
+                <Link href="/login" className="text-navy-100 hover:text-gold">
                   Connexion
                 </Link>
                 <Link
                   href="/signup"
-                  className="rounded bg-zinc-900 px-3 py-1.5 text-white"
+                  className="rounded-full bg-gold px-3 py-1.5 font-semibold text-navy"
                 >
                   Créer un compte
                 </Link>
@@ -82,7 +95,10 @@ export default async function RootLayout({
             )}
           </nav>
         </header>
-        {children}
+        <div className="pb-14 md:pb-0">{children}</div>
+        <CompareBar />
+        <ChatFab />
+        <TabBar />
       </body>
     </html>
   );
