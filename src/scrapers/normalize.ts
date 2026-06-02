@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import { extractAmenities } from "@/lib/amenities";
+import { resolveFokontany } from "@/lib/fokontany";
 import { geocode } from "./geocode";
 import type {
   NormalizedListing,
@@ -83,6 +85,9 @@ export async function normalizeListing(
   const coord = await geocode(raw.rawAddress);
   if (!coord) return null;
 
+  const amenities = extractAmenities(`${raw.title} ${raw.description}`);
+  const fokontany = resolveFokontany(coord.lng, coord.lat);
+
   return {
     source: raw.source,
     externalId: raw.externalId,
@@ -99,5 +104,7 @@ export async function normalizeListing(
     rooms: rooms || 0,
     imageUrls: raw.imageUrls.slice(0, 20),
     rawHash: hashRawListing(raw),
+    amenities,
+    fokontany,
   };
 }
