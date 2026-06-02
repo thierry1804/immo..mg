@@ -54,13 +54,16 @@ export default function HomeView() {
     return () => ac.abort();
   }, [query, bbox]);
 
-  // Top match: highest confidence in view (gold halo on card + map marker).
+  // Top match (gold halo): by declared compatibility when a profile is active,
+  // otherwise by confidence.
   const topMatchId = useMemo(() => {
+    const hasCompat = listings.some((l) => l.compatibility != null);
+    const rank = (l: Listing) =>
+      hasCompat ? (l.compatibility ?? -1) : (l.confidenceScore ?? -1);
     let best: Listing | null = null;
     for (const l of listings) {
-      if (l.confidenceScore == null) continue;
-      if (!best || (l.confidenceScore ?? 0) > (best.confidenceScore ?? 0))
-        best = l;
+      if (rank(l) < 0) continue;
+      if (!best || rank(l) > rank(best)) best = l;
     }
     return best?.id ?? null;
   }, [listings]);

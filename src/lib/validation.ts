@@ -36,6 +36,18 @@ export const listingInputSchema = z.object({
 });
 export type ListingInput = z.infer<typeof listingInputSchema>;
 
+export const userProfileSchema = z.object({
+  budgetMin: z.number().int().positive().max(1_000_000_000_000).nullish(),
+  budgetMax: z.number().int().positive().max(1_000_000_000_000).nullish(),
+  transactionType: transactionTypeEnum.nullish(),
+  quartiers: z.array(z.string().max(100)).max(30).default([]),
+  mustHave: z.array(amenityEnum).max(AMENITIES.length).default([]),
+  propertyTypes: z.array(propertyTypeEnum).max(5).default([]),
+  minSurface: z.number().int().positive().max(1_000_000).nullish(),
+  alertThreshold: z.number().int().min(0).max(100).default(80),
+});
+export type UserProfileInput = z.infer<typeof userProfileSchema>;
+
 export const scrapeSourceInputSchema = z.object({
   slug: z
     .string()

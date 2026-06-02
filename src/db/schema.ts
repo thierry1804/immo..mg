@@ -119,6 +119,25 @@ export const listings = pgTable(
   ],
 );
 
+// Declared compatibility profile (M5). One row per user; all preference fields
+// optional — a dimension left blank scores neutrally in computeCompatibility.
+export const userProfiles = pgTable("user_profiles", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  budgetMin: bigint("budget_min", { mode: "number" }),
+  budgetMax: bigint("budget_max", { mode: "number" }),
+  transactionType: transactionType("transaction_type"),
+  quartiers: text("quartiers").array().notNull().default([]),
+  mustHave: text("must_have").array().notNull().default([]),
+  propertyTypes: text("property_types").array().notNull().default([]),
+  minSurface: integer("min_surface"),
+  alertThreshold: integer("alert_threshold").notNull().default(80),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const propertyDetails = pgTable("property_details", {
   listingId: text("listing_id")
     .primaryKey()
@@ -182,3 +201,4 @@ export type Listing = typeof listings.$inferSelect;
 export type PropertyDetails = typeof propertyDetails.$inferSelect;
 export type ListingPhoto = typeof listingPhotos.$inferSelect;
 export type ScrapeSource = typeof scrapeSources.$inferSelect;
+export type UserProfile = typeof userProfiles.$inferSelect;

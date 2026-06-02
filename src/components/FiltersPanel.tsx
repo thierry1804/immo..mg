@@ -18,6 +18,7 @@ const TXN: { key: Filters["txn"]; label: string }[] = [
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: "relevance", label: "Pertinence" },
+  { key: "compat", label: "Compatibilité" },
   { key: "price_asc", label: "Prix ↑" },
   { key: "price_desc", label: "Prix ↓" },
   { key: "surface", label: "Surface" },

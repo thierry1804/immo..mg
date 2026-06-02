@@ -1,9 +1,18 @@
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { listingPhotos, listings, propertyDetails } from "@/db/schema";
+import {
+  listingPhotos,
+  listings,
+  propertyDetails,
+  userProfiles,
+} from "@/db/schema";
 import { AMENITIES, type Amenity } from "@/lib/amenities";
 import { getCurrentSession } from "@/lib/auth";
+import {
+  computeCompatibility,
+  type CompatProfile,
+} from "@/lib/compatibility";
 import { computeConfidence } from "@/lib/confidence";
 import { resolveFokontany } from "@/lib/fokontany";
 import { parseBbox } from "@/lib/geo";
@@ -94,7 +103,54 @@ export async function GET(req: Request) {
     .orderBy(orderBy)
     .limit(200);
 
-  return NextResponse.json({ listings: rows });
+  // Declared compatibility (M5): only when the signed-in user has a profile.
+  const profile = await currentProfile();
+  if (!profile) {
+    return NextResponse.json({
+      listings: rows.map((r) => ({ ...r, compatibility: null })),
+    });
+  }
+
+  let scored = rows.map((r) => ({
+    ...r,
+    compatibility: computeCompatibility(profile, {
+      price: r.price,
+      transactionType: r.transactionType,
+      fokontany: r.fokontany,
+      amenities: (r.amenities ?? []) as Amenity[],
+      propertyType: r.propertyType,
+      surfaceM2: r.surfaceM2,
+    }).score,
+  }));
+
+  // With a profile, "compat" sort (and the default ordering) ranks by fit.
+  if (q.sort === "compat" || q.sort === undefined) {
+    scored = scored.sort((a, b) => b.compatibility - a.compatibility);
+  }
+
+  return NextResponse.json({ listings: scored });
+}
+
+/** The signed-in user's compatibility profile, or null if none/anonymous. */
+async function currentProfile(): Promise<CompatProfile | null> {
+  const { user } = await getCurrentSession();
+  if (!user) return null;
+  const rows = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, user.id))
+    .limit(1);
+  const p = rows[0];
+  if (!p) return null;
+  return {
+    budgetMin: p.budgetMin,
+    budgetMax: p.budgetMax,
+    transactionType: p.transactionType,
+    quartiers: p.quartiers,
+    mustHave: p.mustHave as Amenity[],
+    propertyTypes: p.propertyTypes,
+    minSurface: p.minSurface,
+  };
 }
 
 export async function POST(req: Request) {

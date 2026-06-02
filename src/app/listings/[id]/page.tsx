@@ -2,12 +2,20 @@ import { and, eq, sql } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AmenityTag from "@/components/immo/AmenityTag";
+import CompatibilityRing from "@/components/immo/CompatibilityRing";
 import ConfidenceBar from "@/components/immo/ConfidenceBar";
 import Ico from "@/components/immo/Ico";
 import RealCostEstimator from "@/components/immo/RealCostEstimator";
 import { db } from "@/db/client";
-import { listingPhotos, listings, propertyDetails } from "@/db/schema";
+import {
+  listingPhotos,
+  listings,
+  propertyDetails,
+  userProfiles,
+} from "@/db/schema";
 import { AMENITIES, type Amenity } from "@/lib/amenities";
+import { getCurrentSession } from "@/lib/auth";
+import { computeCompatibility } from "@/lib/compatibility";
 import type { ConfidenceCheck } from "@/lib/confidence";
 import { formatPrice } from "@/lib/format";
 import { estimateRealCost } from "@/lib/real-cost";
@@ -79,6 +87,40 @@ export default async function ListingPage({
     surfaceM2: listing.surfaceM2,
     amenities,
   });
+
+  // Declared compatibility (M5): shown only when the signed-in user has a profile.
+  const { user } = await getCurrentSession();
+  let compatibility: ReturnType<typeof computeCompatibility> | null = null;
+  if (user) {
+    const prof = (
+      await db
+        .select()
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, user.id))
+        .limit(1)
+    )[0];
+    if (prof) {
+      compatibility = computeCompatibility(
+        {
+          budgetMin: prof.budgetMin,
+          budgetMax: prof.budgetMax,
+          transactionType: prof.transactionType,
+          quartiers: prof.quartiers,
+          mustHave: prof.mustHave as Amenity[],
+          propertyTypes: prof.propertyTypes,
+          minSurface: prof.minSurface,
+        },
+        {
+          price: listing.price,
+          transactionType: listing.transactionType,
+          fokontany: listing.fokontany,
+          amenities,
+          propertyType: listing.propertyType,
+          surfaceM2: listing.surfaceM2,
+        },
+      );
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 md:px-6 md:py-10">
@@ -190,6 +232,32 @@ export default async function ListingPage({
 
         {/* Sidebar */}
         <aside className="space-y-4">
+          {compatibility && (
+            <div className="rounded-2xl border border-gold-soft bg-gold-tint/40 p-4 shadow-card">
+              <div className="flex items-center gap-4">
+                <CompatibilityRing score={compatibility.score} size={76} />
+                <div>
+                  <h3 className="font-display text-base font-semibold text-navy">
+                    Votre compatibilité
+                  </h3>
+                  <p className="text-xs text-ink-2">
+                    selon vos préférences déclarées
+                  </p>
+                </div>
+              </div>
+              <ul className="mt-3 space-y-1.5 text-xs">
+                {compatibility.breakdown.map((b) => (
+                  <li key={b.key} className="flex items-center justify-between">
+                    <span className="text-ink-2">{b.label}</span>
+                    <span className="tnum text-muted">
+                      {Math.round(b.match * 100)}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {listing.confidenceScore != null && (
             <div className="rounded-2xl border border-line bg-white p-4 shadow-card">
               <ConfidenceBar
