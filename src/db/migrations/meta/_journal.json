@@ -29,6 +29,13 @@
       "when": 1780343216386,
       "tag": "0003_scrape_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780423610492,
+      "tag": "0004_immo_enrichment",
+      "breakpoints": true
     }
   ]
 }

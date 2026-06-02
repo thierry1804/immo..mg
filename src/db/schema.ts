@@ -94,11 +94,29 @@ export const listings = pgTable(
     externalId: text("external_id"),
     scrapedAt: timestamp("scraped_at", { withTimezone: true }),
     rawHash: text("raw_hash"),
+    fokontany: text("fokontany"),
+    amenities: text("amenities").array().notNull().default([]),
+    confidenceScore: integer("confidence_score"),
+    confidenceBreakdown: jsonb("confidence_breakdown").$type<
+      { key: string; label: string; ok: boolean; weight: number }[]
+    >(),
+    pricePerSqm: bigint("price_per_sqm", { mode: "number" }),
+    estimatedRealCost: bigint("estimated_real_cost", { mode: "number" }),
+    canonicalId: text("canonical_id"),
+    sources: jsonb("sources")
+      .$type<{ source: string; url: string | null }[]>()
+      .notNull()
+      .default([]),
+    isDuplicate: boolean("is_duplicate").notNull().default(false),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("listings_location_idx").using("gist", t.location)],
+  (t) => [
+    index("listings_location_idx").using("gist", t.location),
+    index("listings_amenities_idx").using("gin", t.amenities),
+  ],
 );
 
 export const propertyDetails = pgTable("property_details", {
