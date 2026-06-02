@@ -6,16 +6,18 @@ import LogoutButton from "@/components/LogoutButton";
 import TabBar from "@/components/immo/TabBar";
 import { getCurrentSession } from "@/lib/auth";
 
+// Variable fonts: one file covering the full weight axis (Next.js recommends
+// variable fonts). Omitting `weight` selects the variable file automatically.
 const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  display: "swap",
 });
 
 const hanken = Hanken_Grotesk({
   variable: "--font-hanken",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -43,7 +45,10 @@ export default async function RootLayout({
           >
             immo<span className="text-gold">·</span>mg
           </Link>
-          <nav className="flex items-center gap-4 text-sm">
+          <nav
+            aria-label="Navigation principale"
+            className="flex items-center gap-4 text-sm"
+          >
             {user ? (
               <>
                 {user.role === "admin" && (

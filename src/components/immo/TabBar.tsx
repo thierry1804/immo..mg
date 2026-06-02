@@ -14,7 +14,10 @@ const TABS: Array<{ href: string; label: string; icon: IcoName }> = [
 export default function TabBar() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-stretch border-t border-navy-700 bg-navy text-paper md:hidden">
+    <nav
+      aria-label="Navigation mobile"
+      className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-stretch border-t border-navy-700 bg-navy text-paper md:hidden"
+    >
       {TABS.map((t) => {
         const active = pathname === t.href.split("?")[0];
         return (
