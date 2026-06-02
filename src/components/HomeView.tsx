@@ -12,6 +12,7 @@ import {
 } from "react";
 import { type Filters, parseFilters, toParams } from "@/lib/search-filters";
 import ConversationalBar from "./immo/ConversationalBar";
+import MarketBand from "./immo/MarketBand";
 import PropertyCard, {
   type PropertySummary,
 } from "./immo/PropertyCard";
@@ -92,6 +93,9 @@ export default function HomeView() {
         <ConversationalBar
           onFilters={(f) => setFilters((prev) => ({ ...prev, ...f }))}
         />
+        {filters.fokontany && (
+          <MarketBand fokontany={filters.fokontany} txn={filters.txn} />
+        )}
         <FiltersPanel value={filters} onChange={setFilters} />
       </div>
       <div className="grid flex-1 grid-rows-[45dvh_1fr] overflow-hidden md:grid-cols-[1fr_400px] md:grid-rows-1">

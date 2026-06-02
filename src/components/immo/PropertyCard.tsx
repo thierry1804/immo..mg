@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { Amenity } from "@/lib/amenities";
 import { formatPrice } from "@/lib/format";
+import { useCompare } from "@/lib/use-compare";
 import AmenityTag from "./AmenityTag";
 import CompatibilityRing from "./CompatibilityRing";
 import ConfidenceBar from "./ConfidenceBar";
@@ -47,6 +50,8 @@ export default function PropertyCard({
 }) {
   const priceLabel = formatPrice(listing.price, listing.transactionType);
   const shownAmenities = listing.amenities.slice(0, 4);
+  const { ids, toggle, full } = useCompare();
+  const inCompare = ids.includes(listing.id);
 
   return (
     <Link
@@ -70,6 +75,25 @@ export default function PropertyCard({
         <span className="absolute left-3 top-3 rounded-full bg-navy/90 px-2.5 py-1 text-[11px] font-semibold text-paper backdrop-blur">
           {listing.transactionType === "sale" ? "Vente" : "Location"}
         </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggle(listing.id);
+          }}
+          disabled={!inCompare && full}
+          aria-pressed={inCompare}
+          title={inCompare ? "Retirer du comparateur" : "Comparer"}
+          className={`absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition disabled:opacity-40 ${
+            inCompare
+              ? "bg-gold text-navy"
+              : "bg-white/90 text-navy hover:bg-white"
+          }`}
+        >
+          <Ico name="scale" size={13} />
+          {inCompare ? "Ajouté" : "Comparer"}
+        </button>
         {topMatch && (
           <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-gold px-2.5 py-1 text-[11px] font-semibold text-navy">
             <Ico name="star" size={12} /> Top match

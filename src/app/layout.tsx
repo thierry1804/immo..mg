@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import LogoutButton from "@/components/LogoutButton";
 import ChatFab from "@/components/immo/ChatFab";
+import CompareBar from "@/components/immo/CompareBar";
 import TabBar from "@/components/immo/TabBar";
 import { getCurrentSession } from "@/lib/auth";
 
@@ -95,6 +96,7 @@ export default async function RootLayout({
           </nav>
         </header>
         <div className="pb-14 md:pb-0">{children}</div>
+        <CompareBar />
         <ChatFab />
         <TabBar />
       </body>
