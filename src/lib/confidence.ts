@@ -83,10 +83,26 @@ export function computeConfidence(input: ConfidenceInput): ConfidenceResult {
     weight: CONFIDENCE_WEIGHTS[key],
   }));
 
-  const score = breakdown.reduce(
-    (sum, c) => sum + (c.ok ? c.weight : 0),
-    0,
-  );
+  const score = scoreFromBreakdown(breakdown);
 
   return { score, breakdown };
+}
+
+/** Sum of the weights of all passing checks (the canonical score formula). */
+export function scoreFromBreakdown(breakdown: ConfidenceCheck[]): number {
+  return breakdown.reduce((sum, c) => sum + (c.ok ? c.weight : 0), 0);
+}
+
+/**
+ * Return a copy of `breakdown` with the given check marked satisfied. Used when
+ * a new source is linked to a canonical listing during dedup: only the
+ * `multiSource` input changed, so flipping that one check and re-summing is
+ * exact (checks are independent and additive) and avoids refetching every
+ * confidence input. No-op when the check already passes; never mutates input.
+ */
+export function markConfidenceCheck(
+  breakdown: ConfidenceCheck[],
+  key: ConfidenceKey,
+): ConfidenceCheck[] {
+  return breakdown.map((c) => (c.key === key ? { ...c, ok: true } : c));
 }

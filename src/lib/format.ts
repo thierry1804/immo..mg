@@ -2,11 +2,16 @@ const ARIARY_FORMAT = new Intl.NumberFormat("fr-FR", {
   maximumFractionDigits: 0,
 });
 
+/** Plain amount in Ariary, e.g. "1 250 000 Ar" (no transaction suffix). */
+export function formatAriary(amount: number): string {
+  return `${ARIARY_FORMAT.format(amount)} Ar`;
+}
+
 export function formatPrice(
   amount: number,
   transactionType: "sale" | "rent",
 ): string {
-  const formatted = `${ARIARY_FORMAT.format(amount)} Ar`;
+  const formatted = formatAriary(amount);
   return transactionType === "rent" ? `${formatted} / mois` : formatted;
 }
 

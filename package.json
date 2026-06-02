@@ -11,6 +11,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:backfill": "tsx --env-file=.env.local scripts/backfill-enrichment.ts",
     "worker": "tsx --env-file=.env.local scripts/worker.ts",
     "scrape:once": "tsx --env-file=.env.local scripts/enqueue-once.ts",
     "test": "vitest run",

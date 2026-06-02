@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   FOKONTANY,
+  fokontanyGeoJSON,
   haversineKm,
   matchFokontanyByName,
   resolveFokontany,
@@ -52,5 +53,29 @@ describe("matchFokontanyByName", () => {
 
   it("returns null when no neighborhood is named", () => {
     expect(matchFokontanyByName("une maison quelque part")).toBeNull();
+  });
+});
+
+describe("fokontanyGeoJSON", () => {
+  it("emits one closed-ring Polygon feature per neighborhood", () => {
+    const fc = fokontanyGeoJSON(24);
+    expect(fc.type).toBe("FeatureCollection");
+    expect(fc.features).toHaveLength(FOKONTANY.length);
+    for (const f of fc.features) {
+      expect(f.geometry.type).toBe("Polygon");
+      const ring = f.geometry.coordinates[0];
+      expect(ring).toHaveLength(25); // steps + 1
+      expect(ring[0]).toEqual(ring[ring.length - 1]); // closed
+    }
+  });
+
+  it("carries each neighborhood's name and a ring near its centroid", () => {
+    const fc = fokontanyGeoJSON();
+    const ivandry = FOKONTANY.find((f) => f.name === "Ivandry")!;
+    const feat = fc.features.find((f) => f.properties.name === "Ivandry")!;
+    const [lng, lat] = feat.geometry.coordinates[0][0];
+    // First vertex sits ~radius east of the centroid, within a degree.
+    expect(Math.abs(lat - ivandry.lat)).toBeLessThan(0.1);
+    expect(lng).toBeGreaterThan(ivandry.lng);
   });
 });

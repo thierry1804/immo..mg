@@ -70,6 +70,40 @@ export function resolveFokontany(lng: number, lat: number): string | null {
   return best?.name ?? null;
 }
 
+/**
+ * Build a GeoJSON FeatureCollection of polygon circles (one per neighborhood)
+ * approximating each fokontany's radius, for the translucent map layer. Pure —
+ * returns plain GeoJSON; the map component styles and adds it.
+ */
+export function fokontanyGeoJSON(steps = 48): {
+  type: "FeatureCollection";
+  features: {
+    type: "Feature";
+    properties: { name: string };
+    geometry: { type: "Polygon"; coordinates: number[][][] };
+  }[];
+} {
+  const features = FOKONTANY.map((f) => {
+    // Degrees per km: latitude ~constant; longitude scaled by cos(lat).
+    const dLat = f.radiusKm / 110.574;
+    const dLng = f.radiusKm / (111.32 * Math.cos(toRad(f.lat)));
+    const ring: number[][] = [];
+    for (let i = 0; i <= steps; i++) {
+      const theta = (i / steps) * 2 * Math.PI;
+      ring.push([
+        f.lng + dLng * Math.cos(theta),
+        f.lat + dLat * Math.sin(theta),
+      ]);
+    }
+    return {
+      type: "Feature" as const,
+      properties: { name: f.name },
+      geometry: { type: "Polygon" as const, coordinates: [ring] },
+    };
+  });
+  return { type: "FeatureCollection", features };
+}
+
 /** Find the first neighborhood named in free text (NLP / autocomplete). */
 export function matchFokontanyByName(text: string): string | null {
   const folded = fold(text);

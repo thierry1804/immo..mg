@@ -17,7 +17,14 @@ export type IcoName =
   | "pin"
   | "layers"
   | "school"
-  | "clock";
+  | "clock"
+  | "road"
+  | "snow"
+  | "wifi"
+  | "wave"
+  | "star"
+  | "scale"
+  | "send";
 
 const PATHS: Record<IcoName, React.ReactNode> = {
   spark: <path d="M12 3v6m0 6v6m-9-9h6m6 0h6" />,
@@ -37,6 +44,13 @@ const PATHS: Record<IcoName, React.ReactNode> = {
   layers: <path d="M12 3l9 5-9 5-9-5 9-5zm-9 9l9 5 9-5" />,
   school: <path d="M3 9l9-4 9 4-9 4-9-4zm3 2v5c0 1 3 2 6 2s6-1 6-2v-5" />,
   clock: <path d="M12 21a9 9 0 100-18 9 9 0 000 18zm0-14v5l3 2" />,
+  road: <path d="M6 21l2-16h8l2 16M12 7v2m0 4v2m0 4v0" />,
+  snow: <path d="M12 3v18M5 7l14 10M19 7L5 17M9 5l3 2 3-2M9 19l3-2 3 2" />,
+  wifi: <path d="M2 9c6-5 14-5 20 0M5.5 12.5c4-3 9-3 13 0M9 16c2-1.5 4-1.5 6 0M12 19.5h0" />,
+  wave: <path d="M3 8c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 14c2-2 4-2 6 0s4 2 6 0 4-2 6 0" />,
+  star: <path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17l-5.3 2.6 1.1-6L3.4 9.4l6-.8L12 3z" />,
+  scale: <path d="M12 3v18M5 7h14M5 7l-2 6a3 3 0 006 0L7 7M19 7l-2 6a3 3 0 006 0l-2-6M8 21h8" />,
+  send: <path d="M4 12l16-8-6 16-3-6-7-2z" />,
 };
 
 type Props = SVGProps<SVGSVGElement> & { name: IcoName; size?: number };

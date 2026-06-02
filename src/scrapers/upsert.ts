@@ -1,5 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
-import { computeConfidence } from "@/lib/confidence";
+import {
+  computeConfidence,
+  markConfidenceCheck,
+  scoreFromBreakdown,
+  type ConfidenceCheck,
+} from "@/lib/confidence";
 import { estimateRealCost } from "@/lib/real-cost";
 import { db } from "@/db/client";
 import { listingPhotos, listings, propertyDetails } from "@/db/schema";
@@ -48,6 +53,7 @@ export async function upsertScrapedListing(
         price: listings.price,
         surfaceM2: propertyDetails.surfaceM2,
         sources: listings.sources,
+        confidenceBreakdown: listings.confidenceBreakdown,
       })
       .from(listings)
       .innerJoin(propertyDetails, eq(propertyDetails.listingId, listings.id))
@@ -131,12 +137,24 @@ export async function upsertScrapedListing(
       }
     });
 
-    // Append source to canonical if a duplicate was detected
+    // Append source to canonical if a duplicate was detected. Linking a new
+    // source also earns the canonical its multi-source confidence credit, so
+    // recompute its score from the existing breakdown (only `multiSource`
+    // changed — flipping that one check and re-summing is exact).
     if (canonical) {
+      const breakdown = (canonical.confidenceBreakdown ??
+        []) as ConfidenceCheck[];
+      const upgraded = markConfidenceCheck(breakdown, "multiSource");
       await db
         .update(listings)
         .set({
           sources: sql`${listings.sources} || ${JSON.stringify([{ source: n.source, url: n.externalUrl }])}::jsonb`,
+          ...(breakdown.length > 0
+            ? {
+                confidenceBreakdown: upgraded,
+                confidenceScore: scoreFromBreakdown(upgraded),
+              }
+            : {}),
         })
         .where(eq(listings.id, canonical.id));
     }

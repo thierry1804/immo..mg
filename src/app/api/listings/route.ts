@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { listingPhotos, listings, propertyDetails } from "@/db/schema";
+import { AMENITIES, type Amenity } from "@/lib/amenities";
 import { getCurrentSession } from "@/lib/auth";
 import { computeConfidence } from "@/lib/confidence";
 import { resolveFokontany } from "@/lib/fokontany";
@@ -39,6 +40,32 @@ export async function GET(req: Request) {
     conditions.push(sql`${propertyDetails.surfaceM2} >= ${q.minSurface}`);
   if (q.minRooms !== undefined)
     conditions.push(sql`${propertyDetails.rooms} >= ${q.minRooms}`);
+  if (q.fokontany) conditions.push(eq(listings.fokontany, q.fokontany));
+
+  // Hide duplicates that have been folded into a canonical listing.
+  conditions.push(eq(listings.isDuplicate, false));
+
+  // amenities: CSV of canonical keys; require the listing to have all of them.
+  const requestedAmenities = (q.amenities ?? "")
+    .split(",")
+    .map((a) => a.trim())
+    .filter((a): a is Amenity => (AMENITIES as readonly string[]).includes(a));
+  if (requestedAmenities.length > 0) {
+    conditions.push(
+      sql`${listings.amenities} @> ${sql.raw(
+        `ARRAY[${requestedAmenities.map((a) => `'${a}'`).join(",")}]::text[]`,
+      )}`,
+    );
+  }
+
+  const orderBy = {
+    price_asc: sql`${listings.price} asc`,
+    price_desc: sql`${listings.price} desc`,
+    surface: sql`${propertyDetails.surfaceM2} desc nulls last`,
+    confidence: sql`${listings.confidenceScore} desc nulls last`,
+    compat: sql`${listings.confidenceScore} desc nulls last`, // M5 refines
+    relevance: sql`${listings.createdAt} desc`,
+  }[q.sort ?? "relevance"];
 
   const rows = await db
     .select({
@@ -52,11 +79,19 @@ export async function GET(req: Request) {
       lat: sql<number>`ST_Y(${listings.location}::geometry)`,
       surfaceM2: propertyDetails.surfaceM2,
       rooms: propertyDetails.rooms,
+      fokontany: listings.fokontany,
+      amenities: listings.amenities,
+      confidenceScore: listings.confidenceScore,
+      pricePerSqm: listings.pricePerSqm,
+      sourceCount: sql<number>`coalesce(jsonb_array_length(${listings.sources}), 0)`,
+      photo: sql<
+        string | null
+      >`(select p.path from ${listingPhotos} p where p.listing_id = ${listings.id} order by p.display_order limit 1)`,
     })
     .from(listings)
     .innerJoin(propertyDetails, eq(propertyDetails.listingId, listings.id))
     .where(and(...conditions))
-    .orderBy(sql`${listings.createdAt} desc`)
+    .orderBy(orderBy)
     .limit(200);
 
   return NextResponse.json({ listings: rows });

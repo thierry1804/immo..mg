@@ -3,11 +3,17 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import maplibregl, { type LngLatBounds, type Map as MlMap } from "maplibre-gl";
 import { useEffect, useRef } from "react";
+import { fokontanyGeoJSON } from "@/lib/fokontany";
+import { shortPriceLabel } from "@/lib/format";
 
 export type MapMarker = {
   id: string;
   lng: number;
   lat: number;
+  price?: number;
+  transactionType?: "sale" | "rent";
+  topMatch?: boolean;
+  /** Used when price/transactionType are absent. */
   label?: string;
   onClick?: () => void;
 };
@@ -26,6 +32,8 @@ type Props = {
   picker?: { lng: number; lat: number } | null;
   onPick?: (coords: { lng: number; lat: number }) => void;
   onMoveEnd?: (bbox: Bbox) => void;
+  /** Draw the translucent fokontany (neighborhood) layer. */
+  showFokontany?: boolean;
   className?: string;
 };
 
@@ -69,6 +77,7 @@ export default function Map({
   picker,
   onPick,
   onMoveEnd,
+  showFokontany = false,
   className,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -96,6 +105,46 @@ export default function Map({
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
     map.on("load", () => {
+      if (showFokontany) {
+        map.addSource("fokontany", {
+          type: "geojson",
+          data: fokontanyGeoJSON(),
+        });
+        map.addLayer({
+          id: "fokontany-fill",
+          type: "fill",
+          source: "fokontany",
+          paint: { "fill-color": "#1a3a5c", "fill-opacity": 0.06 },
+        });
+        map.addLayer({
+          id: "fokontany-line",
+          type: "line",
+          source: "fokontany",
+          paint: {
+            "line-color": "#2b5176",
+            "line-width": 1,
+            "line-dasharray": [2, 2],
+            "line-opacity": 0.5,
+          },
+        });
+        map.addLayer({
+          id: "fokontany-label",
+          type: "symbol",
+          source: "fokontany",
+          layout: {
+            "text-field": ["get", "name"],
+            "text-size": 11,
+            "text-transform": "uppercase",
+            "text-letter-spacing": 0.08,
+          },
+          paint: {
+            "text-color": "#1a3a5c",
+            "text-halo-color": "#fafaf8",
+            "text-halo-width": 1.4,
+            "text-opacity": 0.75,
+          },
+        });
+      }
       onMoveEndRef.current?.(bboxFromBounds(map.getBounds()));
     });
     map.on("moveend", () => {
@@ -119,9 +168,17 @@ export default function Map({
     for (const m of markersRef.current) m.remove();
     markersRef.current = markers.map((m) => {
       const el = document.createElement("div");
+      const text =
+        m.price !== undefined && m.transactionType
+          ? shortPriceLabel(m.price, m.transactionType)
+          : (m.label ?? "•");
+      const tone = m.topMatch
+        ? "background:var(--gold);color:var(--navy);box-shadow:var(--shadow-top-match)"
+        : "background:var(--navy);color:var(--paper)";
       el.className =
-        "flex h-7 min-w-7 cursor-pointer items-center justify-center rounded-full bg-zinc-900 px-2 text-xs font-medium text-white shadow ring-2 ring-white";
-      el.textContent = m.label ?? "•";
+        "flex h-7 cursor-pointer items-center justify-center rounded-full px-2.5 text-[11px] font-semibold tabular-nums shadow ring-2 ring-white transition";
+      el.style.cssText = tone;
+      el.textContent = text;
       el.addEventListener("click", (ev) => {
         ev.stopPropagation();
         m.onClick?.();
