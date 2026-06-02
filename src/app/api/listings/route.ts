@@ -3,11 +3,15 @@ import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { listingPhotos, listings, propertyDetails } from "@/db/schema";
 import { getCurrentSession } from "@/lib/auth";
+import { computeConfidence } from "@/lib/confidence";
+import { resolveFokontany } from "@/lib/fokontany";
 import { parseBbox } from "@/lib/geo";
+import { estimateRealCost } from "@/lib/real-cost";
 import {
   listingInputSchema,
   listingsQuerySchema,
 } from "@/lib/validation";
+import { pricePerSqm } from "@/scrapers/enrich";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -74,6 +78,23 @@ export async function POST(req: Request) {
   const input = parsed.data;
   const id = crypto.randomUUID();
 
+  const fokontany = resolveFokontany(input.lng, input.lat);
+  const realCost = estimateRealCost({
+    price: input.price,
+    transactionType: input.transactionType,
+    surfaceM2: input.surfaceM2,
+    amenities: input.amenities,
+  });
+  const { score, breakdown } = computeConfidence({
+    photoCount: input.photoPaths.length,
+    surfaceM2: input.surfaceM2,
+    fokontany,
+    ageDays: 0,
+    price: input.price,
+    neighborhoodMedianPrice: null,
+    sourceCount: 1,
+  });
+
   await db.transaction(async (tx) => {
     await tx.insert(listings).values({
       id,
@@ -85,6 +106,14 @@ export async function POST(req: Request) {
       price: input.price,
       address: input.address,
       location: { lng: input.lng, lat: input.lat },
+      fokontany,
+      amenities: input.amenities,
+      confidenceScore: score,
+      confidenceBreakdown: breakdown,
+      pricePerSqm: pricePerSqm(input.price, input.surfaceM2),
+      estimatedRealCost: realCost?.total ?? null,
+      sources: [{ source: "user", url: null }],
+      lastSeenAt: new Date(),
     });
     await tx.insert(propertyDetails).values({
       listingId: id,

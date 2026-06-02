@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { AMENITIES } from "./amenities";
+
+const amenityEnum = z.enum(AMENITIES);
 
 export const credentialsSchema = z.object({
   email: z.string().email().max(255).toLowerCase(),
@@ -29,6 +32,7 @@ export const listingInputSchema = z.object({
   bedrooms: z.number().int().min(0).max(100).optional().nullable(),
   bathrooms: z.number().int().min(0).max(100).optional().nullable(),
   photoPaths: z.array(z.string()).max(20).default([]),
+  amenities: z.array(amenityEnum).max(AMENITIES.length).default([]),
 });
 export type ListingInput = z.infer<typeof listingInputSchema>;
 
@@ -71,5 +75,10 @@ export const listingsQuerySchema = z.object({
   maxPrice: numeric.int().min(0).optional(),
   minSurface: numeric.int().min(0).optional(),
   minRooms: numeric.int().min(0).optional(),
+  amenities: z.string().optional(), // CSV of amenity keys, parsed in the route
+  fokontany: z.string().max(100).optional(),
+  sort: z
+    .enum(["relevance", "price_asc", "price_desc", "surface", "confidence", "compat"])
+    .optional(),
 });
 export type ListingsQuery = z.infer<typeof listingsQuerySchema>;
