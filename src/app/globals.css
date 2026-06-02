@@ -43,7 +43,9 @@
   --shadow-drawer: 0 -12px 50px rgba(13, 33, 55, 0.3);
 }
 
-/* The .immo scope inherits the same tokens; Tweaks overrides will target it. */
+/* The .immo scope inherits the same tokens; Tweaks overrides will target it.
+   Mirror the tokens the Tweaks panel repaints (accent, surface temperature)
+   so an override on .immo flows through borders and ink, not just the ramp. */
 .immo {
   --navy: #0d2137;
   --gold: #c9a84c;
@@ -52,6 +54,11 @@
   --gold-tint: #f7f1de;
   --paper: #fafaf8;
   --paper-2: #f3f1ea;
+  --line: #e7e3d8;
+  --line-2: #ece9e0;
+  --ink: #0d2137;
+  --ink-2: #43525f;
+  --muted: #8a93a0;
 }
 
 /* ----------------------------------------------------------------------------
@@ -85,6 +92,10 @@
   --color-absent: var(--absent);
   --color-absent-bg: var(--absent-bg);
 
+  --shadow-card: var(--shadow-card);
+  --shadow-top-match: var(--shadow-top-match);
+  --shadow-drawer: var(--shadow-drawer);
+
   --font-display: var(--font-playfair);
   --font-sans: var(--font-hanken);
 }
@@ -95,18 +106,22 @@
 body {
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-hanken), system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Tabular figures for data (prices, scores). */
-.tnum {
-  font-variant-numeric: tabular-nums;
-}
+/* Composable utility classes — kept in the utilities layer so Tailwind
+   utilities applied to the same element can still override them. */
+@layer utilities {
+  /* Tabular figures for data (prices, scores). */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
 
-/* 24px screen gutter (DESIGN §4). */
-.pad {
-  padding-inline: 24px;
+  /* 24px screen gutter (DESIGN §4). */
+  .pad {
+    padding-inline: 24px;
+  }
 }
 
 @layer components {
