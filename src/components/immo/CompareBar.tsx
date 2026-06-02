@@ -17,21 +17,21 @@ export default function CompareBar() {
 
   return (
     <div className="fixed inset-x-0 bottom-16 z-30 flex justify-center px-4 md:bottom-6">
-      <div className="flex items-center gap-3 rounded-full border border-line bg-white px-4 py-2 shadow-drawer">
-        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink">
-          <Ico name="scale" size={16} className="text-gold-700" />
+      <div className="flex items-center gap-3 rounded-full bg-navy px-4 py-2.5 shadow-drawer">
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-paper">
+          <Ico name="scale" size={16} className="text-gold" />
           {ids.length}/{max} à comparer
         </span>
         <button
           type="button"
           onClick={clear}
-          className="text-xs text-muted hover:text-navy"
+          className="text-xs text-navy-300 hover:text-paper"
         >
           Vider
         </button>
         <Link
           href={`/compare?ids=${ids.join(",")}`}
-          className="rounded-full bg-navy px-4 py-1.5 text-sm font-semibold text-paper transition hover:bg-navy-700"
+          className="rounded-full bg-gold px-4 py-1.5 text-sm font-semibold text-navy transition hover:bg-gold-700"
         >
           Comparer
         </Link>

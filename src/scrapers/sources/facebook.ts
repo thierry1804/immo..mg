@@ -49,7 +49,7 @@ export const facebookScraper: Scraper = {
       const ctx = await browser.newContext({
         userAgent:
           process.env.SCRAPER_USER_AGENT ??
-          "Mozilla/5.0 (X11; Linux x86_64) GeoMarketBot/0.1",
+          "Mozilla/5.0 (X11; Linux x86_64) ImmoMgBot/0.1",
       });
       const page = await ctx.newPage();
       // TODO: implement login + marketplace search for Madagascar.

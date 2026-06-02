@@ -9,7 +9,7 @@ const NOMINATIM_URL =
   process.env.NOMINATIM_URL ?? "https://nominatim.openstreetmap.org";
 const USER_AGENT =
   process.env.SCRAPER_USER_AGENT ??
-  "GeoMarketBot/0.1 (+contact@geomarket.local)";
+  "ImmoMgBot/0.1 (+contact@immo.mg)";
 
 const throttle = pThrottle({ limit: 1, interval: 1100 });
 const memoryCache = new Map<string, { lng: number; lat: number } | null>();

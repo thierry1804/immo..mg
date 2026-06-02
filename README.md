@@ -1,9 +1,8 @@
-# GeoMarket
+# immo·mg
 
-Plateforme géographique d'annonces immobilières pour Madagascar. Une carte
-interactive recense vente et location de biens, alimentée à la fois par les
-annonces postées via le site et par un système de scraping qui ingère des
-annonces depuis des plateformes externes.
+Conseiller immobilier IA pour Antananarivo — agrège, dédoublonne et enrichit les
+annonces (score de confiance, coût réel, compatibilité). Carte MapLibre + PostGIS,
+scraping CoinAfrique et sources configurables, recherche conversationnelle.
 
 ## Sommaire
 

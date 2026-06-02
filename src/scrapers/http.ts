@@ -2,7 +2,7 @@ import { fetch } from "undici";
 
 const USER_AGENT =
   process.env.SCRAPER_USER_AGENT ??
-  "GeoMarketBot/0.1 (+contact@geomarket.local)";
+  "ImmoMgBot/0.1 (+contact@immo.mg)";
 
 export async function fetchHtml(url: string): Promise<string | null> {
   try {

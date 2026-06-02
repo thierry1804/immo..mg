@@ -20,6 +20,9 @@
 # production
 /build
 
+# local agent worktrees (nested git repos)
+.claude/
+
 # misc
 .DS_Store
 *.pem
