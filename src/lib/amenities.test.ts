@@ -66,4 +66,16 @@ describe("extractAmenities", () => {
   it("is accent and case insensitive", () => {
     expect(extractAmenities("GROUPE ELECTROGENE")).toContain("generator");
   });
+
+  it("does not match 'ac' inside unrelated words (acclimatation)", () => {
+    expect(
+      extractAmenities("période d'acclimatation au climat tropical"),
+    ).not.toContain("ac");
+  });
+
+  it("still detects climatisation despite the word boundary", () => {
+    expect(extractAmenities("toutes les pièces sont climatisées")).toContain(
+      "ac",
+    );
+  });
 });

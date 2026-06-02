@@ -30,13 +30,13 @@ export const AMENITY_LABELS: Record<Amenity, string> = {
 
 // Keyword patterns matched against accent-stripped, lowercased text.
 const PATTERNS: Record<Amenity, RegExp> = {
-  guard: /\bgardien|gardiennage|\bvigile/,
-  generator: /groupe\s*electrogene|generateur|groupe\s*elec/,
+  guard: /\bgardien|\bvigile/,
+  generator: /groupe\s*electrogene|\bgenerateur|groupe\s*elec/,
   cistern: /citerne|forage|\bpuits\b|bache a eau|eau autonome/,
   parking: /parking|\bgarage\b|stationnement/,
   gated: /residence fermee|residence securisee|\bsecurise|cloture|gated/,
   paved: /bitume|goudronn|asphalt|voie pavee/,
-  ac: /climatis|\bclim\b|air conditionn/,
+  ac: /\bclimatis|\bclim\b|air conditionn/,
   fiber: /\bfibre|fibre optique|internet fibr/,
   pool: /piscine|\bpool\b/,
 };

@@ -1,9 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
   FOKONTANY,
+  haversineKm,
   matchFokontanyByName,
   resolveFokontany,
 } from "./fokontany";
+
+describe("haversineKm", () => {
+  it("returns 0 for identical points", () => {
+    expect(haversineKm(47.52, -18.87, 47.52, -18.87)).toBe(0);
+  });
+
+  it("computes a known short distance (Ivandry → Ankorondrano ≈ 1.8 km)", () => {
+    const d = haversineKm(47.5286, -18.8694, 47.5236, -18.8853);
+    expect(d).toBeGreaterThan(1.5);
+    expect(d).toBeLessThan(2.2);
+  });
+});
 
 describe("FOKONTANY data", () => {
   it("has unique names and sane radii", () => {
