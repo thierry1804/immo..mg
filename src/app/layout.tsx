@@ -3,6 +3,7 @@ import { Playfair_Display, Hanken_Grotesk } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import LogoutButton from "@/components/LogoutButton";
+import ChatFab from "@/components/immo/ChatFab";
 import CompareBar from "@/components/immo/CompareBar";
 import MainNav from "@/components/immo/MainNav";
 import TabBar from "@/components/immo/TabBar";
@@ -40,11 +41,11 @@ export default async function RootLayout({
       className={`${playfair.variable} ${hanken.variable} immo h-full antialiased`}
     >
       <body className="min-h-full bg-paper text-ink">
-        <header className="flex h-14 items-center justify-between gap-4 bg-navy px-4 text-paper md:px-6">
+        <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-navy-700/60 bg-navy/95 px-4 text-paper backdrop-blur-md md:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-4 md:gap-8">
             <Link
               href="/"
-              className="shrink-0 font-display text-lg font-semibold tracking-tight"
+              className="focus-gold shrink-0 font-display text-lg font-semibold tracking-tight transition hover:text-gold"
             >
               immo<span className="text-gold">·</span>mg
             </Link>
@@ -98,8 +99,9 @@ export default async function RootLayout({
             )}
           </nav>
         </header>
-        <div className="pb-14 md:pb-0">{children}</div>
+        <div className="pb-tab">{children}</div>
         <CompareBar />
+        <ChatFab />
         <TabBar />
       </body>
     </html>

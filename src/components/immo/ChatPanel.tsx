@@ -93,7 +93,7 @@ export default function ChatPanel() {
           e.preventDefault();
           void send();
         }}
-        className="mb-4 flex items-center gap-2 rounded-full border border-line bg-white px-3 py-2 shadow-card focus-within:border-navy"
+        className="sticky bottom-0 mb-2 flex items-center gap-2 rounded-full border border-line bg-white/95 px-3 py-2 shadow-card backdrop-blur-sm focus-within:border-navy md:mb-4"
       >
         <input
           value={input}

@@ -22,10 +22,10 @@ export default function MainNav() {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+            className={`focus-gold rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-200 ${
               active
-                ? "bg-gold text-navy"
-                : "text-navy-100 hover:bg-navy-700 hover:text-gold"
+                ? "bg-gold text-navy shadow-[0_0_0_1px_rgba(201,168,76,0.35)]"
+                : "text-navy-100 hover:bg-navy-700/80 hover:text-gold"
             }`}
           >
             {item.label}

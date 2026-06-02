@@ -12,10 +12,12 @@ import {
 } from "react";
 import { type Filters, parseFilters, toParams } from "@/lib/search-filters";
 import ConversationalBar from "./immo/ConversationalBar";
+import ListingSkeleton from "./immo/ListingSkeleton";
 import MarketBand from "./immo/MarketBand";
 import PropertyCard, {
   type PropertySummary,
 } from "./immo/PropertyCard";
+import Ico from "./immo/Ico";
 import FiltersPanel from "./FiltersPanel";
 import type { Bbox, MapMarker } from "./Map";
 
@@ -107,7 +109,12 @@ export default function HomeView() {
             onMoveEnd={handleMoveEnd}
           />
           {loading && (
-            <div className="absolute left-3 top-3 rounded-full bg-navy/90 px-3 py-1 text-xs font-medium text-paper shadow">
+            <div
+              className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-navy-600/40 bg-navy/90 px-3 py-1.5 text-xs font-medium text-paper shadow backdrop-blur-sm"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
               Recherche…
             </div>
           )}
@@ -116,11 +123,27 @@ export default function HomeView() {
           <p className="mb-2 px-1 text-xs font-medium text-ink-2">
             {listings.length} bien{listings.length > 1 ? "s" : ""} dans la vue
           </p>
-          {listings.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-line bg-white p-6 text-center text-sm text-muted">
-              Aucun bien dans cette zone. Élargissez la vue ou ajustez les
-              filtres.
-            </p>
+          {listings.length === 0 && !loading ? (
+            <div className="rounded-2xl border border-dashed border-line bg-white p-8 text-center shadow-card">
+              <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-gold-tint">
+                <Ico name="pin" size={22} className="text-gold-700" />
+              </div>
+              <p className="font-display text-base font-semibold text-navy">
+                Aucun bien dans cette zone
+              </p>
+              <p className="mt-1.5 text-sm text-muted">
+                Déplacez la carte, élargissez la vue ou décrivez votre recherche
+                dans la barre ci-dessus.
+              </p>
+            </div>
+          ) : loading && listings.length === 0 ? (
+            <ul className="space-y-3" aria-busy="true" aria-label="Chargement">
+              {[0, 1, 2].map((i) => (
+                <li key={i}>
+                  <ListingSkeleton />
+                </li>
+              ))}
+            </ul>
           ) : (
             <ul className="space-y-3">
               {listings.map((l) => (

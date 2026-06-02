@@ -56,7 +56,7 @@ export default function PropertyCard({
   return (
     <Link
       href={`/listings/${listing.id}`}
-      className="group block overflow-hidden rounded-2xl border border-line bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-22px_rgba(13,33,55,0.32)]"
+      className="focus-gold group block overflow-hidden rounded-2xl border border-line bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-22px_rgba(13,33,55,0.32)]"
       style={topMatch ? { boxShadow: "var(--shadow-top-match)" } : undefined}
     >
       <div className="relative aspect-[16/10] w-full">

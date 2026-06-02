@@ -122,6 +122,43 @@ body {
   .pad {
     padding-inline: 24px;
   }
+
+  /* Reserve space for the mobile TabBar + home indicator. */
+  .pb-tab {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (min-width: 768px) {
+    .pb-tab {
+      padding-bottom: 0;
+    }
+  }
+
+  .focus-gold:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .animate-rise {
+    animation: rise-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-rise {
+      animation: none;
+    }
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer components {

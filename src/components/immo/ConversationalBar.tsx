@@ -72,15 +72,20 @@ export default function ConversationalBar({
         <button
           type="submit"
           disabled={busy}
-          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-navy px-3 py-1.5 text-xs font-semibold text-paper transition hover:bg-navy-700 disabled:opacity-60"
+          aria-busy={busy}
+          className="focus-gold inline-flex shrink-0 items-center gap-1 rounded-full bg-navy px-3 py-1.5 text-xs font-semibold text-paper transition hover:bg-navy-700 active:scale-[0.98] disabled:opacity-60"
         >
-          {busy ? "…" : <Ico name="send" size={14} />}
-          <span className="hidden sm:inline">Rechercher</span>
+          {busy ? (
+            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-paper/30 border-t-paper" />
+          ) : (
+            <Ico name="send" size={14} />
+          )}
+          <span className="hidden sm:inline">{busy ? "Analyse…" : "Rechercher"}</span>
         </button>
       </form>
 
       {result ? (
-        <p className="mt-2 px-1 text-xs text-ink-2">
+        <p className="mt-2 px-1 text-xs text-ink-2" role="status" aria-live="polite">
           {result.clarification ? (
             <span className="text-gold-700">{result.clarification}</span>
           ) : (
