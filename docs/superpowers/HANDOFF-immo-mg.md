@@ -1,6 +1,6 @@
 # Handoff — immo·mg adaptation
 
-_Last updated 2026-06-02. Branch `worktree-immo-mg` (git worktree `.claude/worktrees/immo-mg`). Nothing merged to `main` yet — milestones are stacked on this branch and merged later._
+_Last updated 2026-06-02. Branch `worktree-immo-mg` (git worktree `.claude/worktrees/immo-mg`). **All six milestones (M1–M6) are complete** and stacked on this branch — nothing merged to `main` yet. Next step is integration (merge/PR)._
 
 ## What this is
 
@@ -17,15 +17,15 @@ GeoMarket (Next 16 / React 19, Tailwind v4, Drizzle + Postgres/PostGIS, BullMQ+R
 | M1 | Design system: navy/gold tokens, Playfair/Hanken fonts, header, TabBar, `Ico` | **DONE** |
 | M2a | Pure enrichment libs: `amenities`, `fokontany`, `real-cost`, `confidence` + vitest | **DONE** |
 | M2b | Migration `0004` (fokontany, amenities[], confidence, price_per_sqm, estimated_real_cost, canonical_id, sources, is_duplicate) + scraper normalize/upsert dedup (ST_DWithin) + validation/create-path | **DONE** (migration applied to live DB; enrichment + dedup verified end-to-end) |
-| M3 | Restyle screens into signature components | **TODO** (next) |
-| M4 | Conversational search (OpenAI gpt-4o-mini + regex fallback) | TODO |
-| M5 | Declared-compatibility profile | TODO |
-| M6 | Market band + comparison | TODO |
+| M3 | Signature components (PropertyCard, ConfidenceBar, CompatibilityRing, RealCostEstimator, AmenityTag) + restyled detail/HomeView/Map (fokontany layer)/Filters | **DONE** |
+| M4 | Conversational search: `extract-filters` (rule-based, tested) + `llm/openai` (gpt-4o-mini via fetch, json_schema, regex fallback), `/api/search/conversational`, ConversationalBar, ChatPanel, `/chat`, ChatFab | **DONE** |
+| M5 | Declared compatibility: `compatibility.ts` (tested), `user_profiles` + migration 0005, GET/PUT `/api/user/profile`, `/preferences`, per-listing compat + `sort=compat` + compat top-match + detail ring | **DONE** |
+| M6 | Market band + comparison: `/api/market/summary` (median price/m² + trend), MarketBand, `/api/listings/compare`, `useCompare` + CompareBar + `/compare` (best-cell highlight) | **DONE** |
 
-## Deferred follow-ups (pick up during M3+)
+## Deferred follow-ups — both RESOLVED in M3
 
-1. **Canonical-confidence recompute** — when a source is appended to a canonical listing during dedup, the canonical's `confidence_score` is not recomputed, so its multi-source credit lags until its next update. Recompute on append.
-2. **`/?view=map` TabBar active-state** — the Map tab does not reflect active state when the map view is opened via the `view=map` query param.
+1. ~~Canonical-confidence recompute on dedup append~~ — done via `markConfidenceCheck`/`scoreFromBreakdown` (tested) wired into `scrapers/upsert.ts`.
+2. ~~`/?view=map` TabBar active-state~~ — done via `useSearchParams` (Suspense-wrapped TabBar).
 
 ## Key decisions (with the user)
 
@@ -43,8 +43,15 @@ GeoMarket (Next 16 / React 19, Tailwind v4, Drizzle + Postgres/PostGIS, BullMQ+R
 
 ## Verification
 
-- `npm test` — unit tests for pure libs.
-- `npm run db:generate` → `npm run db:migrate` — migrations.
-- `npm run scrape:once coinafrique` — pipeline (amenities/fokontany/scores populated; dedup links `canonical_id`/`sources`).
-- `npm run dev` — visual check of Accueil / Résultats / Détail / Chat / Préférences / Comparaison.
-- `npm run build` — must pass.
+- `npm test` — 67 unit tests (amenities, confidence, fokontany incl. GeoJSON, real-cost, extract-filters, compatibility) pass.
+- `npm run build` — passes (24 routes).
+- `npm run db:generate` → `npm run db:migrate` — migrations (0005 applied to live DB).
+- `npm run db:backfill` — **new**: deterministically enriches pre-pipeline listings from the pure libs (no network). Was applied to the live DB (68 rows) so the signature UI has data; safe/idempotent to re-run.
+- `npm run scrape:once coinafrique` — pipeline (amenities/fokontany/scores; dedup links `canonical_id`/`sources` and recomputes the canonical's confidence).
+- `npm run dev` — Accueil / Résultats / Détail / Chat / Préférences / Comparaison. Conversational search + compatibility + market + compare endpoints verified live this session.
+
+## Notes for whoever merges
+
+- Conversational search runs in **fallback (rule-based) mode** until `OPENAI_API_KEY` is set — verified working without a key.
+- A throwaway dev account (`m5test+…@example.com`) with a saved profile exists in the dev DB from M5 verification; harmless, delete if undesired.
+- The build emits a benign "multiple lockfiles" warning because the worktree sits under the main repo; not an error.
