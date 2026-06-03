@@ -17,7 +17,7 @@ export type SortKey =
   | "compat";
 
 /** Component/URL state: search filters plus the active sort. */
-export type Filters = SearchFilters & { sort?: SortKey };
+export type Filters = SearchFilters & { sort?: SortKey; q?: string };
 
 const NUM_KEYS = ["minPrice", "maxPrice", "minSurface", "minRooms"] as const;
 
@@ -64,6 +64,8 @@ export function parseFilters(get: (k: string) => string | null): Filters {
     ["price_asc", "price_desc", "surface", "confidence", "compat"].includes(sort)
   )
     f.sort = sort as SortKey;
+  const q = get("q");
+  if (q) f.q = q;
   return f;
 }
 
@@ -82,7 +84,8 @@ export function hasActiveFilters(filters: Filters): boolean {
     (filters.nearLng != null && filters.nearLat != null) ||
     filters.radiusKm != null ||
     (filters.amenities?.length ?? 0) > 0 ||
-    (filters.sort && filters.sort !== "compat" && filters.sort !== "relevance")
+    (filters.sort && filters.sort !== "compat" && filters.sort !== "relevance") ||
+    filters.q
   );
 }
 
@@ -108,5 +111,6 @@ export function toParams(
     p.set("excludeTitleContains", filters.excludeTitleContains);
   if (filters.amenities?.length) p.set("amenities", filters.amenities.join(","));
   if (filters.sort && filters.sort !== "relevance") p.set("sort", filters.sort);
+  if (filters.q) p.set("q", filters.q);
   return p;
 }

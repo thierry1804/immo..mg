@@ -104,6 +104,7 @@ export const listingsQuerySchema = z.object({
   nearLat: numeric.min(-90).max(90).optional(),
   radiusKm: numeric.min(0.1).max(50).optional(),
   excludeTitleContains: z.string().max(40).optional(),
+  q: z.string().max(200).optional(),
   sort: z
     .enum(["relevance", "price_asc", "price_desc", "surface", "confidence", "compat"])
     .optional(),
