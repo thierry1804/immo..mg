@@ -56,6 +56,21 @@ describe("matchFokontanyByName", () => {
   });
 });
 
+describe("matchFokontanyByName (fuzzy)", () => {
+  it("matche un nom exact", () => {
+    expect(matchFokontanyByName("je cherche à Analakely")).toBe("Analakely");
+  });
+  it("tolère une faute de frappe", () => {
+    expect(matchFokontanyByName("appartement à Analakelyy")).toBe("Analakely");
+  });
+  it("matche une substitution (y→i) que le substring ne peut pas attraper", () => {
+    expect(matchFokontanyByName("appartement à Analakeli")).toBe("Analakely");
+  });
+  it("ne matche pas un mot trop éloigné", () => {
+    expect(matchFokontanyByName("appartement à Paris")).toBeNull();
+  });
+});
+
 describe("fokontanyGeoJSON", () => {
   it("emits one closed-ring Polygon feature per neighborhood", () => {
     const fc = fokontanyGeoJSON(24);

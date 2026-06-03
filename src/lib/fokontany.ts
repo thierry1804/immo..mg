@@ -1,3 +1,5 @@
+import { levenshtein } from "@/lib/levenshtein";
+
 /**
  * Antananarivo neighborhoods (fokontany / quartiers). Coordinates are
  * APPROXIMATE centroids (hand-placed from OSM), sufficient for nearest-match
@@ -131,5 +133,23 @@ export function matchFokontanyByName(text: string): string | null {
       best = { name: f.name, len: key.length };
     }
   }
-  return best?.name ?? null;
+  if (best) return best.name;
+
+  // Repli fuzzy : compare chaque token de la requête aux noms de fokontany.
+  // Gate à 5 caractères : évite qu'un mot court (ex. « vato ») matche « Ivato ».
+  // En cas d'égalité de distance, le premier nom dans FOKONTANY l'emporte.
+  const tokens = folded.split(/[^a-z0-9]+/).filter((t) => t.length >= 5);
+  let fuzzy: { name: string; dist: number } | null = null;
+  for (const f of FOKONTANY) {
+    const target = fold(f.name);
+    const maxDist = Math.min(2, Math.max(1, Math.floor(target.length / 5)));
+    for (const tok of tokens) {
+      if (Math.abs(tok.length - target.length) > maxDist) continue;
+      const d = levenshtein(tok, target);
+      if (d <= maxDist && (!fuzzy || d < fuzzy.dist)) {
+        fuzzy = { name: f.name, dist: d };
+      }
+    }
+  }
+  return fuzzy?.name ?? null;
 }
