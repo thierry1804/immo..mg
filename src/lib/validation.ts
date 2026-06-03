@@ -98,6 +98,12 @@ export const listingsQuerySchema = z.object({
   minRooms: numeric.int().min(0).optional(),
   amenities: z.string().optional(), // CSV of amenity keys, parsed in the route
   fokontany: z.string().max(100).optional(),
+  nearLandmark: z.string().max(120).optional(),
+  nearLabel: z.string().max(120).optional(),
+  nearLng: numeric.min(-180).max(180).optional(),
+  nearLat: numeric.min(-90).max(90).optional(),
+  radiusKm: numeric.min(0.1).max(50).optional(),
+  excludeTitleContains: z.string().max(40).optional(),
   sort: z
     .enum(["relevance", "price_asc", "price_desc", "surface", "confidence", "compat"])
     .optional(),

@@ -10,6 +10,7 @@ import {
   type Amenity,
 } from "@/lib/amenities";
 import { matchFokontanyByName } from "@/lib/fokontany";
+import { enrichSearchFilters, parseRadiusKm } from "@/lib/search-anchor";
 
 export type SearchFilters = {
   txn?: "sale" | "rent";
@@ -19,6 +20,17 @@ export type SearchFilters = {
   minSurface?: number;
   minRooms?: number;
   fokontany?: string;
+  /** Libellé du lieu (rempli après géocodage dynamique). */
+  nearLabel?: string;
+  /** Centre du rayon (WGS84), issu de Nominatim. */
+  nearLng?: number;
+  nearLat?: number;
+  /** @deprecated Utiliser nearLabel + géocodage — conservé pour URLs anciennes */
+  nearLandmark?: string;
+  /** Rayon en km autour du point géocodé ou du centroïde fokontany. */
+  radiusKm?: number;
+  /** Exclut les annonces dont le titre contient ce motif (ex. « villa » si l'utilisateur dit « maison »). */
+  excludeTitleContains?: string;
   amenities?: Amenity[];
 };
 
@@ -56,13 +68,14 @@ export function extractFilters(query: string): ExtractResult {
   const filters: SearchFilters = {};
 
   // Transaction
-  if (/\b(louer|location|en location|a louer|loue)\b/.test(s)) filters.txn = "rent";
+  if (/\b(louer|locations?|en location|a louer|loue)\b/.test(s)) filters.txn = "rent";
   else if (/\b(acheter|achat|a vendre|vendre|vente|acquerir)\b/.test(s))
     filters.txn = "sale";
 
   // Property type
   if (/\bappart|appartement|studio\b/.test(s)) filters.propertyType = "apartment";
-  else if (/\bmaison|villa\b/.test(s)) filters.propertyType = "house";
+  else if (/\bvilla\b/.test(s)) filters.propertyType = "house";
+  else if (/\bmaison\b/.test(s)) filters.propertyType = "house";
   else if (/\bterrain|parcelle\b/.test(s)) filters.propertyType = "land";
   else if (/\blocal|commercial|commerce|bureau|boutique|entrepot\b/.test(s))
     filters.propertyType = "commercial";
@@ -114,13 +127,17 @@ export function extractFilters(query: string): ExtractResult {
     filters.minPrice = amount(min[1], min[2]);
   }
 
-  // Neighborhood + amenities (these match on the original, accent-aware query).
+  const radiusKm = parseRadiusKm(query);
+  if (radiusKm != null) filters.radiusKm = radiusKm;
+
   const fok = matchFokontanyByName(query);
-  if (fok) filters.fokontany = fok;
+  if (fok && radiusKm == null) filters.fokontany = fok;
+
   const amenities = extractAmenities(query);
   if (amenities.length > 0) filters.amenities = amenities;
 
-  return { filters, summary: summarize(filters) };
+  const enriched = enrichSearchFilters(query, filters);
+  return { filters: enriched, summary: summarize(enriched) };
 }
 
 const ARIARY = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
@@ -129,7 +146,17 @@ export function summarize(f: SearchFilters): string {
   const parts: string[] = [];
   if (f.txn) parts.push(f.txn === "rent" ? "location" : "vente");
   if (f.propertyType) parts.push(PROPERTY_LABEL[f.propertyType]);
-  if (f.fokontany) parts.push(`à ${f.fokontany}`);
+  if (f.nearLabel && f.radiusKm) {
+    parts.push(`autour de ${f.nearLabel} (${f.radiusKm} km)`);
+  } else if (f.nearLabel) {
+    parts.push(`près de ${f.nearLabel}`);
+  } else if (f.fokontany) {
+    parts.push(
+      f.radiusKm
+        ? `à ${f.fokontany} (rayon ${f.radiusKm} km)`
+        : `à ${f.fokontany}`,
+    );
+  }
   if (f.minPrice !== undefined && f.maxPrice !== undefined)
     parts.push(`${ARIARY.format(f.minPrice)}–${ARIARY.format(f.maxPrice)} Ar`);
   else if (f.maxPrice !== undefined)

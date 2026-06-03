@@ -12,7 +12,12 @@ import {
   useTransition,
 } from "react";
 import { DEFAULT_TANA_BBOX } from "@/lib/map-layers";
-import { type Filters, parseFilters, toParams } from "@/lib/search-filters";
+import {
+  type Filters,
+  hasActiveFilters,
+  parseFilters,
+  toParams,
+} from "@/lib/search-filters";
 import { useMounted } from "@/lib/use-mounted";
 import ConversationalBar from "./immo/ConversationalBar";
 import ListingDrawer from "./immo/ListingDrawer";
@@ -63,8 +68,17 @@ export default function HomeView({
     { fokontany: string; medianPricePerSqm: number }[]
   >([]);
   const [reportId, setReportId] = useState<string | null>(null);
+  const [clearSignal, setClearSignal] = useState(0);
   const requestSeq = useRef(0);
   const mounted = useMounted();
+
+  const resetSearch = useCallback(() => {
+    setFilters({});
+    setTopMatchOnly(false);
+    setFlyToTarget(null);
+    setClearSignal((n) => n + 1);
+    router.replace("/", { scroll: false });
+  }, [router]);
 
   const effectiveBbox = bbox ?? DEFAULT_TANA_BBOX;
 
@@ -193,6 +207,9 @@ export default function HomeView({
         <div className="space-y-2 px-4 py-2 md:space-y-3 md:px-6 md:py-3">
           <ConversationalBar
             onFilters={(f) => setFilters((prev) => ({ ...prev, ...f }))}
+            onClear={resetSearch}
+            clearSignal={clearSignal}
+            showClear={hasActiveFilters(filters)}
           />
           <button
             type="button"
@@ -252,7 +269,11 @@ export default function HomeView({
                 Top match
               </button>
             </div>
-            <FiltersPanel value={filters} onChange={setFilters} />
+            <FiltersPanel
+              value={filters}
+              onChange={setFilters}
+              onReset={resetSearch}
+            />
           </div>
         </div>
       </div>

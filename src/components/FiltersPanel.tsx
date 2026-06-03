@@ -1,13 +1,18 @@
 "use client";
 
 import { AMENITIES, AMENITY_LABELS, type Amenity } from "@/lib/amenities";
-import { type Filters, type SortKey } from "@/lib/search-filters";
+import {
+  hasActiveFilters,
+  type Filters,
+  type SortKey,
+} from "@/lib/search-filters";
 
 export type { Filters, SortKey };
 
 type Props = {
   value: Filters;
   onChange: (next: Filters) => void;
+  onReset?: () => void;
 };
 
 const TXN: { key: Filters["txn"]; label: string }[] = [
@@ -25,7 +30,7 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: "confidence", label: "Confiance" },
 ];
 
-export default function FiltersPanel({ value, onChange }: Props) {
+export default function FiltersPanel({ value, onChange, onReset }: Props) {
   function num(key: "minPrice" | "maxPrice" | "minSurface" | "minRooms", raw: string) {
     const next = { ...value };
     if (raw === "") delete next[key];
@@ -46,6 +51,15 @@ export default function FiltersPanel({ value, onChange }: Props) {
 
   return (
     <div className="space-y-3">
+      {onReset && hasActiveFilters(value) ? (
+        <button
+          type="button"
+          onClick={onReset}
+          className="focus-gold text-xs font-semibold text-ink-2 underline-offset-2 hover:text-navy hover:underline"
+        >
+          Tout effacer
+        </button>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         {/* Transaction segmented control */}
         <div className="inline-flex rounded-full border border-line bg-white p-0.5">

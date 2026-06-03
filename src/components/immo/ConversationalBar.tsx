@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SearchFilters } from "@/lib/search-filters";
 import type { PreviewListing } from "@/lib/search-preview";
 import Ico from "./Ico";
@@ -31,12 +31,23 @@ const CHIPS = [
  */
 export default function ConversationalBar({
   onFilters,
+  onClear,
+  clearSignal = 0,
+  showClear = false,
 }: {
   onFilters: (f: SearchFilters) => void;
+  onClear: () => void;
+  clearSignal?: number;
+  showClear?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setQuery("");
+    setResult(null);
+  }, [clearSignal]);
 
   async function run(q: string) {
     const text = q.trim();
@@ -59,37 +70,53 @@ export default function ConversationalBar({
     }
   }
 
+  const canClear = showClear || result != null || query.length > 0;
+
   return (
     <div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void run(query);
-        }}
-        className="flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 shadow-card focus-within:border-navy"
-      >
-        <Ico name="spark" size={18} className="shrink-0 text-gold-700" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Décrivez le bien idéal : « villa à louer à Ivandry, gardien, budget 3M »"
-          className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-muted"
-          aria-label="Recherche conversationnelle"
-        />
-        <button
-          type="submit"
-          disabled={busy}
-          aria-busy={busy}
-          className="focus-gold inline-flex shrink-0 items-center gap-1 rounded-full bg-navy px-3 py-1.5 text-xs font-semibold text-paper transition hover:bg-navy-700 active:scale-[0.98] disabled:opacity-60"
+      <div className="flex items-center gap-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run(query);
+          }}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 shadow-card focus-within:border-navy"
         >
-          {busy ? (
-            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-paper/30 border-t-paper" />
-          ) : (
-            <Ico name="send" size={14} />
-          )}
-          <span className="hidden sm:inline">{busy ? "Analyse…" : "Rechercher"}</span>
-        </button>
-      </form>
+          <Ico name="spark" size={18} className="shrink-0 text-gold-700" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Décrivez le bien idéal : « villa à louer à Ivandry, gardien, budget 3M »"
+            className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-muted"
+            aria-label="Recherche conversationnelle"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            aria-busy={busy}
+            className="focus-gold inline-flex shrink-0 items-center gap-1 rounded-full bg-navy px-3 py-1.5 text-xs font-semibold text-paper transition hover:bg-navy-700 active:scale-[0.98] disabled:opacity-60"
+          >
+            {busy ? (
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-paper/30 border-t-paper" />
+            ) : (
+              <Ico name="send" size={14} />
+            )}
+            <span className="hidden sm:inline">
+              {busy ? "Analyse…" : "Rechercher"}
+            </span>
+          </button>
+        </form>
+        {canClear ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="focus-gold shrink-0 rounded-full border border-line bg-white px-3 py-2 text-xs font-semibold text-ink-2 transition hover:border-navy-300 hover:text-navy"
+            title="Réinitialiser la recherche"
+          >
+            Effacer
+          </button>
+        ) : null}
+      </div>
 
       {result?.clarification && (
         <p className="mt-2 px-1 text-xs text-gold-700" role="status">

@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { AMENITIES } from "@/lib/amenities";
 import { FOKONTANY } from "@/lib/fokontany";
+import { enrichSearchFilters } from "@/lib/search-anchor";
 import {
   extractFilters,
   summarize,
@@ -37,6 +38,7 @@ const filtersSchema = z
     minSurface: z.number().int().positive().nullish(),
     minRooms: z.number().int().nonnegative().nullish(),
     fokontany: z.string().nullish(),
+    radiusKm: z.number().positive().max(50).nullish(),
     amenities: z.array(z.enum(AMENITIES)).nullish(),
   })
   .strip();
@@ -57,6 +59,7 @@ function clean(raw: z.infer<typeof filtersSchema>): SearchFilters {
   if (raw.minSurface != null) out.minSurface = raw.minSurface;
   if (raw.minRooms != null) out.minRooms = raw.minRooms;
   if (raw.fokontany) out.fokontany = raw.fokontany;
+  if (raw.radiusKm != null) out.radiusKm = raw.radiusKm;
   if (raw.amenities?.length) out.amenities = raw.amenities;
   return out;
 }
@@ -80,6 +83,7 @@ const JSON_SCHEMA = {
           "minSurface",
           "minRooms",
           "fokontany",
+          "radiusKm",
           "amenities",
         ],
         properties: {
@@ -93,6 +97,7 @@ const JSON_SCHEMA = {
           minSurface: { type: ["integer", "null"] },
           minRooms: { type: ["integer", "null"] },
           fokontany: { type: ["string", "null"] },
+          radiusKm: { type: ["number", "null"] },
           amenities: {
             type: ["array", "null"],
             items: { type: "string", enum: [...AMENITIES] },
@@ -110,7 +115,9 @@ function systemPrompt(): string {
     "Tu es l'assistant de recherche d'immo·mg, un agrégateur immobilier premium pour Antananarivo (Madagascar).",
     "À partir du message de l'utilisateur, extrais des filtres de recherche structurés.",
     "Les prix sont en Ariary (Ar). Convertis « millions »/« M » (×1 000 000) et « k » (×1 000) en entiers.",
-    `Quartiers (fokontany) reconnus : ${FOKONTANY.map((f) => f.name).join(", ")}. N'utilise que ces noms, sinon laisse null.`,
+    `Quartiers (fokontany) reconnus : ${FOKONTANY.map((f) => f.name).join(", ")}. N'utilise que ces noms, sinon null.`,
+    "radiusKm : rayon en km autour d'un lieu cité (ex. 5 pour « 5 km autour de la gare Soarano »). Le lieu sera géocodé automatiquement — ne mets pas de coordonnées.",
+    "fokontany : uniquement si l'utilisateur cite un quartier connu sans repère précis et sans rayon. Sinon null.",
     `Équipements possibles (clés exactes) : ${AMENITIES.join(", ")}.`,
     "txn = rent pour louer/location, sale pour acheter/vente.",
     "Si la demande est trop vague pour filtrer, mets une question courte dans clarification. Sinon clarification = null.",
@@ -161,7 +168,7 @@ export async function conversationalSearch(
     const parsed = responseSchema.safeParse(JSON.parse(content));
     if (!parsed.success) return fallback(query);
 
-    const filters = clean(parsed.data.filters);
+    const filters = enrichSearchFilters(query, clean(parsed.data.filters));
     return {
       filters,
       summary: parsed.data.summary || summarize(filters),
@@ -174,7 +181,7 @@ export async function conversationalSearch(
 }
 
 function fallback(query: string): ConversationalResult {
-  const { filters, summary } = extractFilters(query);
+  const { filters, summary } = extractFilters(query); // already enriched
   const empty = Object.keys(filters).length === 0;
   return {
     filters,

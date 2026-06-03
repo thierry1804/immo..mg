@@ -1,12 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SearchFilters } from "@/lib/search-filters";
 import type { PreviewListing } from "@/lib/search-preview";
+import {
+  chatHasConversation,
+  clearChatStorage,
+  defaultChatState,
+  loadChat,
+  saveChat,
+  type ChatPersisted,
+  type ChatTurn,
+} from "@/lib/chat-storage";
 import Ico from "./Ico";
 import SearchSummaryCard from "./SearchSummaryCard";
-
-type Turn = { role: "user" | "assistant"; content: string };
 
 type Result = {
   filters: SearchFilters;
@@ -20,25 +27,49 @@ type Result = {
   };
 };
 
-const GREETING =
-  "Bonjour 👋 Décrivez le bien que vous cherchez — type, quartier, budget, équipements — et je prépare la recherche.";
-
 export default function ChatPanel() {
-  const [turns, setTurns] = useState<Turn[]>([
-    { role: "assistant", content: GREETING },
-  ]);
+  const [state, setState] = useState<ChatPersisted>(defaultChatState);
+  const [hydrated, setHydrated] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [lastResult, setLastResult] = useState<Result | null>(null);
-  const histRef = useRef<Turn[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const histRef = useRef<ChatTurn[]>([]);
+
+  useEffect(() => {
+    const saved = loadChat();
+    if (saved) {
+      setState(saved);
+      histRef.current = saved.apiHistory;
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveChat(state);
+    histRef.current = state.apiHistory;
+  }, [state, hydrated]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [state.turns, state.lastResult, busy]);
+
+  const clearConversation = useCallback(() => {
+    const fresh = defaultChatState();
+    setState(fresh);
+    histRef.current = [];
+    clearChatStorage();
+  }, []);
 
   async function send() {
     const text = input.trim();
     if (!text || busy) return;
     setBusy(true);
     setInput("");
-    const userTurn: Turn = { role: "user", content: text };
-    setTurns((t) => [...t, userTurn]);
+    const userTurn: ChatTurn = { role: "user", content: text };
+    setState((s) => ({ ...s, turns: [...s.turns, userTurn] }));
     try {
       const res = await fetch("/api/search/conversational", {
         method: "POST",
@@ -47,29 +78,62 @@ export default function ChatPanel() {
       });
       const data = (await res.json()) as Result;
       const reply = data.clarification || data.summary;
-      const botTurn: Turn = { role: "assistant", content: reply };
-      setTurns((t) => [...t, botTurn]);
-      histRef.current = [...histRef.current, userTurn, botTurn].slice(-12);
-      setLastResult(
-        Object.keys(data.filters).length > 0 ? data : null,
-      );
+      const botTurn: ChatTurn = { role: "assistant", content: reply };
+      const apiHistory = [...histRef.current, userTurn, botTurn].slice(-12);
+      setState((s) => ({
+        turns: [...s.turns, botTurn],
+        apiHistory,
+        lastResult:
+          Object.keys(data.filters).length > 0 && data.preview
+            ? {
+                filters: data.filters,
+                summary: data.summary,
+                preview: data.preview,
+              }
+            : s.lastResult,
+      }));
     } catch {
-      setTurns((t) => [
-        ...t,
-        { role: "assistant", content: "Désolé, une erreur est survenue." },
-      ]);
+      setState((s) => ({
+        ...s,
+        turns: [
+          ...s.turns,
+          { role: "assistant", content: "Désolé, une erreur est survenue." },
+        ],
+      }));
     } finally {
       setBusy(false);
     }
   }
 
+  const hasHistory = chatHasConversation(state);
+
   return (
     <div className="mx-auto flex h-[calc(100dvh-3.5rem)] max-w-2xl flex-col px-4 md:h-[calc(100dvh-3.5rem)]">
-      <div className="flex-1 space-y-3 overflow-y-auto py-6">
-        {turns.map((t, i) => (
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line py-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+          Assistant recherche
+        </p>
+        {hasHistory ? (
+          <button
+            type="button"
+            onClick={clearConversation}
+            className="focus-gold rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink-2 transition hover:border-absent hover:text-navy"
+          >
+            Effacer la discussion
+          </button>
+        ) : null}
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-3 overflow-y-auto py-4"
+      >
+        {state.turns.map((t, i) => (
           <div
-            key={i}
-            className={t.role === "user" ? "flex justify-end" : "flex justify-start"}
+            key={`${i}-${t.role}-${t.content.slice(0, 24)}`}
+            className={
+              t.role === "user" ? "flex justify-end" : "flex justify-start"
+            }
           >
             <div
               className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
@@ -87,13 +151,14 @@ export default function ChatPanel() {
             Analyse en cours…
           </p>
         )}
-        {lastResult?.preview && Object.keys(lastResult.filters).length > 0 && (
-          <SearchSummaryCard
-            filters={lastResult.filters}
-            summary={lastResult.summary}
-            preview={lastResult.preview}
-          />
-        )}
+        {state.lastResult?.preview &&
+          Object.keys(state.lastResult.filters).length > 0 && (
+            <SearchSummaryCard
+              filters={state.lastResult.filters}
+              summary={state.lastResult.summary}
+              preview={state.lastResult.preview}
+            />
+          )}
       </div>
 
       <form

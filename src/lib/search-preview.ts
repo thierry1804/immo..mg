@@ -9,6 +9,8 @@ import {
 import { getCurrentSession } from "@/lib/auth";
 import { computeCompatibility } from "@/lib/compatibility";
 import type { Amenity } from "@/lib/amenities";
+import { listingLocationCondition } from "@/lib/listing-geo-filter";
+import { titleExclusionCondition } from "@/lib/listing-text-filter";
 import type { SearchFilters } from "@/lib/llm/extract-filters";
 export type PreviewListing = {
   id: string;
@@ -33,7 +35,10 @@ export async function searchPreview(
     conditions.push(sql`${listings.price} >= ${filters.minPrice}`);
   if (filters.maxPrice !== undefined)
     conditions.push(sql`${listings.price} <= ${filters.maxPrice}`);
-  if (filters.fokontany) conditions.push(eq(listings.fokontany, filters.fokontany));
+  const locFilter = listingLocationCondition(filters);
+  if (locFilter) conditions.push(locFilter);
+  const titleEx = titleExclusionCondition(filters.excludeTitleContains);
+  if (titleEx) conditions.push(titleEx);
 
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -114,8 +119,12 @@ export async function searchPreview(
   });
 
   let medianHint: string | null = null;
-  if (filters.fokontany) {
-    medianHint = filters.fokontany;
+  if (filters.nearLabel && filters.radiusKm) {
+    medianHint = `${filters.nearLabel} · ${filters.radiusKm} km`;
+  } else if (filters.fokontany) {
+    medianHint = filters.radiusKm
+      ? `${filters.fokontany} · ${filters.radiusKm} km`
+      : filters.fokontany;
   }
 
   return { total: count, listings: listingsOut, medianHint };

@@ -61,6 +61,15 @@ describe("extractFilters", () => {
     );
   });
 
+  it("parses radius km without fixing fokontany (géocodage ensuite)", () => {
+    const f = extractFilters(
+      "des locations dans la région d'ivato sur un rayon de 5km",
+    ).filters;
+    expect(f.txn).toBe("rent");
+    expect(f.radiusKm).toBe(5);
+    expect(f.fokontany).toBeUndefined();
+  });
+
   it("extracts amenities", () => {
     const f = extractFilters("maison avec gardien et piscine").filters;
     expect(f.amenities).toEqual(expect.arrayContaining(["guard", "pool"]));

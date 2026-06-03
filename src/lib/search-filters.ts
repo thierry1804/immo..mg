@@ -36,6 +36,21 @@ export function parseFilters(get: (k: string) => string | null): Filters {
   }
   const fok = get("fokontany");
   if (fok) f.fokontany = fok;
+  const lm = get("nearLandmark");
+  if (lm) f.nearLandmark = lm;
+  const label = get("nearLabel");
+  if (label) f.nearLabel = label;
+  const nearLng = get("nearLng");
+  const nearLat = get("nearLat");
+  if (nearLng != null && nearLng !== "" && Number.isFinite(Number(nearLng)))
+    f.nearLng = Number(nearLng);
+  if (nearLat != null && nearLat !== "" && Number.isFinite(Number(nearLat)))
+    f.nearLat = Number(nearLat);
+  const radius = get("radiusKm");
+  if (radius != null && radius !== "" && Number.isFinite(Number(radius)))
+    f.radiusKm = Number(radius);
+  const excl = get("excludeTitleContains");
+  if (excl) f.excludeTitleContains = excl;
   const amen = get("amenities");
   if (amen) {
     const list = amen
@@ -52,6 +67,25 @@ export function parseFilters(get: (k: string) => string | null): Filters {
   return f;
 }
 
+/** True when any search constraint (not default map sort) is active. */
+export function hasActiveFilters(filters: Filters): boolean {
+  return !!(
+    filters.txn ||
+    filters.propertyType ||
+    filters.minPrice != null ||
+    filters.maxPrice != null ||
+    filters.minSurface != null ||
+    filters.minRooms != null ||
+    filters.fokontany ||
+    filters.nearLandmark ||
+    filters.nearLabel ||
+    (filters.nearLng != null && filters.nearLat != null) ||
+    filters.radiusKm != null ||
+    (filters.amenities?.length ?? 0) > 0 ||
+    (filters.sort && filters.sort !== "compat" && filters.sort !== "relevance")
+  );
+}
+
 /** Serialize filters (+ optional bbox) into URLSearchParams entries. */
 export function toParams(
   filters: Filters,
@@ -65,6 +99,13 @@ export function toParams(
   for (const k of NUM_KEYS)
     if (filters[k] !== undefined) p.set(k, String(filters[k]));
   if (filters.fokontany) p.set("fokontany", filters.fokontany);
+  if (filters.nearLandmark) p.set("nearLandmark", filters.nearLandmark);
+  if (filters.nearLabel) p.set("nearLabel", filters.nearLabel);
+  if (filters.nearLng != null) p.set("nearLng", String(filters.nearLng));
+  if (filters.nearLat != null) p.set("nearLat", String(filters.nearLat));
+  if (filters.radiusKm != null) p.set("radiusKm", String(filters.radiusKm));
+  if (filters.excludeTitleContains)
+    p.set("excludeTitleContains", filters.excludeTitleContains);
   if (filters.amenities?.length) p.set("amenities", filters.amenities.join(","));
   if (filters.sort && filters.sort !== "relevance") p.set("sort", filters.sort);
   return p;

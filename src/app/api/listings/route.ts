@@ -14,7 +14,10 @@ import {
   type CompatProfile,
 } from "@/lib/compatibility";
 import { computeConfidence } from "@/lib/confidence";
+import { listingLocationCondition } from "@/lib/listing-geo-filter";
+import { titleExclusionCondition } from "@/lib/listing-text-filter";
 import { resolveFokontany } from "@/lib/fokontany";
+import { resolveListingsGeoQuery } from "@/lib/resolve-search-place";
 import { parseBbox } from "@/lib/geo";
 import { estimateRealCost } from "@/lib/real-cost";
 import {
@@ -31,7 +34,7 @@ export async function GET(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid query" }, { status: 400 });
   }
-  const q = parsed.data;
+  const q = await resolveListingsGeoQuery(parsed.data);
   const bbox = parseBbox(q.bbox);
 
   const conditions = [eq(listings.status, "active")];
@@ -50,7 +53,10 @@ export async function GET(req: Request) {
     conditions.push(sql`${propertyDetails.surfaceM2} >= ${q.minSurface}`);
   if (q.minRooms !== undefined)
     conditions.push(sql`${propertyDetails.rooms} >= ${q.minRooms}`);
-  if (q.fokontany) conditions.push(eq(listings.fokontany, q.fokontany));
+  const locFilter = listingLocationCondition(q);
+  if (locFilter) conditions.push(locFilter);
+  const titleEx = titleExclusionCondition(q.excludeTitleContains);
+  if (titleEx) conditions.push(titleEx);
 
   // Hide duplicates that have been folded into a canonical listing.
   conditions.push(eq(listings.isDuplicate, false));

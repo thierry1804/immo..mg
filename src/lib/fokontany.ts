@@ -115,6 +115,13 @@ export function fokontanyGeoJSON(steps = 48): {
 }
 
 /** Find the longest neighborhood name mentioned in free text (NLP / autocomplete). */
+export function fokontanyCentroid(
+  name: string,
+): { lng: number; lat: number } | null {
+  const f = FOKONTANY.find((x) => x.name === name);
+  return f ? { lng: f.lng, lat: f.lat } : null;
+}
+
 export function matchFokontanyByName(text: string): string | null {
   const folded = fold(text);
   let best: { name: string; len: number } | null = null;
