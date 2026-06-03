@@ -14,7 +14,10 @@ import {
   type CompatProfile,
 } from "@/lib/compatibility";
 import { computeConfidence } from "@/lib/confidence";
-import { listingLocationCondition } from "@/lib/listing-geo-filter";
+import {
+  listingDistanceExpr,
+  listingLocationCondition,
+} from "@/lib/listing-geo-filter";
 import { titleExclusionCondition } from "@/lib/listing-text-filter";
 import { resolveFokontany } from "@/lib/fokontany";
 import { resolveListingsGeoQuery } from "@/lib/resolve-search-place";
@@ -55,6 +58,7 @@ export async function GET(req: Request) {
     conditions.push(sql`${propertyDetails.rooms} >= ${q.minRooms}`);
   const locFilter = listingLocationCondition(q);
   if (locFilter) conditions.push(locFilter);
+  const distanceExpr = listingDistanceExpr(q);
   const titleEx = titleExclusionCondition(q.excludeTitleContains);
   if (titleEx) conditions.push(titleEx);
 
@@ -86,14 +90,17 @@ export async function GET(req: Request) {
     );
   }
 
-  const orderBy = {
-    price_asc: sql`${listings.price} asc`,
-    price_desc: sql`${listings.price} desc`,
-    surface: sql`${propertyDetails.surfaceM2} desc nulls last`,
-    confidence: sql`${listings.confidenceScore} desc nulls last`,
-    compat: sql`${listings.confidenceScore} desc nulls last`, // M5 refines
-    relevance: sql`${listings.createdAt} desc`,
-  }[q.sort ?? "relevance"];
+  const orderBy =
+    (q.sort ?? "relevance") === "relevance" && distanceExpr
+      ? sql`${distanceExpr} asc`
+      : {
+          price_asc: sql`${listings.price} asc`,
+          price_desc: sql`${listings.price} desc`,
+          surface: sql`${propertyDetails.surfaceM2} desc nulls last`,
+          confidence: sql`${listings.confidenceScore} desc nulls last`,
+          compat: sql`${listings.confidenceScore} desc nulls last`,
+          relevance: sql`${listings.createdAt} desc`,
+        }[q.sort ?? "relevance"];
 
   const rows = await db
     .select({
@@ -115,6 +122,9 @@ export async function GET(req: Request) {
       photo: sql<
         string | null
       >`(select p.path from ${listingPhotos} p where p.listing_id = ${listings.id} order by p.display_order limit 1)`,
+      distanceM: distanceExpr
+        ? sql<number>`${distanceExpr}`
+        : sql<number | null>`null`,
     })
     .from(listings)
     .innerJoin(propertyDetails, eq(propertyDetails.listingId, listings.id))
