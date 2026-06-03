@@ -29,7 +29,16 @@ import {
 } from "@/lib/validation";
 import { validatePhotoPaths } from "@/lib/upload";
 import { pricePerSqm } from "@/scrapers/enrich";
-import { embeddingColumns } from "@/lib/llm/embeddings";
+import { embeddingColumns, embed } from "@/lib/llm/embeddings";
+import {
+  normalizeTextQuery,
+  lexRankExpr,
+  textMatchCondition,
+} from "@/lib/listing-text-search";
+import {
+  computeRelevanceScore,
+  SEMANTIC_MATCH_FLOOR,
+} from "@/lib/search-ranking";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -60,6 +69,11 @@ export async function GET(req: Request) {
   const locFilter = listingLocationCondition(q);
   if (locFilter) conditions.push(locFilter);
   const distanceExpr = listingDistanceExpr(q);
+  const textQ = normalizeTextQuery(q.q);
+  const queryVec = textQ ? await embed(textQ) : null;
+  const vecLiteral = queryVec
+    ? sql`ARRAY[${sql.join(queryVec.map((n) => sql`${n}`), sql`,`)}]::real[]`
+    : null;
   const titleEx = titleExclusionCondition(q.excludeTitleContains);
   if (titleEx) conditions.push(titleEx);
 
@@ -88,6 +102,26 @@ export async function GET(req: Request) {
       sql`${listings.amenities} @> ${sql.raw(
         `ARRAY[${requestedAmenities.map((a) => `'${a}'`).join(",")}]::text[]`,
       )}`,
+    );
+  }
+
+  // Pour les requêtes purement textuelles (sans filtre structurel), on impose
+  // un plancher de pertinence afin de ne pas renvoyer tout le catalogue.
+  const noStructuralFilter =
+    !bbox &&
+    !locFilter &&
+    q.minPrice == null &&
+    q.maxPrice == null &&
+    q.minSurface == null &&
+    q.minRooms == null &&
+    requestedAmenities.length === 0 &&
+    !q.txn &&
+    !q.propertyType;
+  if (textQ && noStructuralFilter) {
+    conditions.push(
+      vecLiteral
+        ? sql`(${textMatchCondition(textQ)} OR cosine_similarity(${listings.embedding}, ${vecLiteral}) > ${SEMANTIC_MATCH_FLOOR})`
+        : textMatchCondition(textQ),
     );
   }
 
@@ -126,6 +160,13 @@ export async function GET(req: Request) {
       distanceM: distanceExpr
         ? sql<number>`${distanceExpr}`
         : sql<number | null>`null`,
+      lexRank: textQ
+        ? sql<number | null>`${lexRankExpr(textQ)}`
+        : sql<number | null>`null`,
+      cosine: vecLiteral
+        ? sql<number | null>`cosine_similarity(${listings.embedding}, ${vecLiteral})`
+        : sql<number | null>`null`,
+      createdAtTs: listings.createdAt,
     })
     .from(listings)
     .innerJoin(propertyDetails, eq(propertyDetails.listingId, listings.id))
@@ -133,11 +174,46 @@ export async function GET(req: Request) {
     .orderBy(orderBy)
     .limit(limit);
 
+  // Ranking hybride (lexical + sémantique + proximité + confiance + fraîcheur).
+  const now = new Date();
+  const radiusKm = q.radiusKm ?? null;
+  function byRelevance<
+    T extends {
+      lexRank: number | null;
+      cosine: number | null;
+      distanceM: number | null;
+      confidenceScore: number | null;
+      createdAtTs: Date;
+    },
+  >(arr: T[]): T[] {
+    // Pré-calcul du score (une fois par ligne) puis tri, pour éviter de
+    // recalculer dans le comparateur O(n log n) fois.
+    return arr
+      .map((r) => ({
+        r,
+        s: computeRelevanceScore(
+          {
+            lexRank: r.lexRank,
+            cosine: r.cosine,
+            distanceM: r.distanceM,
+            confidence: r.confidenceScore,
+            createdAt: r.createdAtTs,
+          },
+          { radiusKm, now },
+        ),
+      }))
+      .sort((a, b) => b.s - a.s)
+      .map(({ r }) => r);
+  }
+  const wantRelevance = q.sort === "relevance";
+
   // Declared compatibility (M5): only when the signed-in user has a profile.
   const profile = await currentProfile();
   if (!profile) {
+    const ordered =
+      wantRelevance || q.sort === undefined ? byRelevance(rows) : rows;
     return NextResponse.json({
-      listings: rows.map((r) => ({ ...r, compatibility: null })),
+      listings: ordered.map((r) => ({ ...r, compatibility: null })),
       nextCursor:
         rows.length === limit ? rows[rows.length - 1]?.id ?? null : null,
     });
@@ -158,6 +234,8 @@ export async function GET(req: Request) {
   // With a profile, "compat" sort (and the default ordering) ranks by fit.
   if (q.sort === "compat" || q.sort === undefined) {
     scored = scored.sort((a, b) => b.compatibility - a.compatibility);
+  } else if (wantRelevance) {
+    scored = byRelevance(scored);
   }
 
   return NextResponse.json({

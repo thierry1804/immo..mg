@@ -9,6 +9,9 @@ export const RELEVANCE_WEIGHTS = {
 const DEFAULT_RADIUS_KM = 10;
 const FRESHNESS_HALFLIFE_DAYS = 30;
 
+/** Seuil de similarité cosinus pour le plancher de pertinence (requête purement textuelle). */
+export const SEMANTIC_MATCH_FLOOR = 0.2;
+
 export type RelevanceSignals = {
   lexRank: number | null;
   cosine: number | null; // [-1,1]
