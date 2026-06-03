@@ -14,6 +14,18 @@ export function buildEmbeddingInput(l: {
   return [l.title, l.description, labels].filter(Boolean).join("\n");
 }
 
+/** Construit les colonnes embedding pour un insert/update (best-effort). */
+export async function embeddingColumns(l: {
+  title: string;
+  description: string;
+  amenities: Amenity[] | string[];
+}): Promise<
+  { embedding: number[]; embeddingModel: string } | Record<string, never>
+> {
+  const vec = await embed(buildEmbeddingInput(l));
+  return vec ? { embedding: vec, embeddingModel: EMBEDDING_MODEL } : {};
+}
+
 /** Embedding OpenAI. Renvoie null sans clé ou sur erreur (dégradation propre). */
 export async function embed(text: string): Promise<number[] | null> {
   const apiKey = process.env.OPENAI_API_KEY;

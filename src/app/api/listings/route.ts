@@ -29,6 +29,7 @@ import {
 } from "@/lib/validation";
 import { validatePhotoPaths } from "@/lib/upload";
 import { pricePerSqm } from "@/scrapers/enrich";
+import { embeddingColumns } from "@/lib/llm/embeddings";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -227,6 +228,12 @@ export async function POST(req: Request) {
     sourceCount: 1,
   });
 
+  const embCols = await embeddingColumns({
+    title: input.title,
+    description: input.description,
+    amenities: input.amenities,
+  });
+
   await db.transaction(async (tx) => {
     await tx.insert(listings).values({
       id,
@@ -246,6 +253,7 @@ export async function POST(req: Request) {
       estimatedRealCost: realCost?.total ?? null,
       sources: [{ source: "user", url: null }],
       lastSeenAt: new Date(),
+      ...embCols,
     });
     await tx.insert(propertyDetails).values({
       listingId: id,

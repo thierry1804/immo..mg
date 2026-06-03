@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildEmbeddingInput, embed } from "@/lib/llm/embeddings";
+import { buildEmbeddingInput, embed, embeddingColumns } from "@/lib/llm/embeddings";
 
 describe("buildEmbeddingInput", () => {
   it("concatène titre, description et libellés d'équipements", () => {
@@ -28,5 +28,24 @@ describe("embed", () => {
   it("renvoie null pour un texte vide", async () => {
     process.env.OPENAI_API_KEY = "sk-test";
     expect(await embed("   ")).toBeNull();
+  });
+});
+
+describe("embeddingColumns", () => {
+  const original = process.env.OPENAI_API_KEY;
+  afterEach(() => {
+    if (original === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = original;
+    vi.restoreAllMocks();
+  });
+  it("renvoie {} sans clé API (dégradation propre)", async () => {
+    delete process.env.OPENAI_API_KEY;
+    const result = await embeddingColumns({
+      title: "Villa neuve",
+      description: "Avec jardin",
+      amenities: ["pool"],
+    });
+    expect(result).toEqual({});
+    expect("embedding" in result).toBe(false);
   });
 });

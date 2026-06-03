@@ -6,6 +6,7 @@ import {
   type ConfidenceCheck,
 } from "@/lib/confidence";
 import { estimateRealCost } from "@/lib/real-cost";
+import { embeddingColumns } from "@/lib/llm/embeddings";
 import { db } from "@/db/client";
 import { listingPhotos, listings, propertyDetails } from "@/db/schema";
 import { isLikelyDuplicate, pricePerSqm } from "./enrich";
@@ -37,6 +38,9 @@ export async function upsertScrapedListing(
       id: listings.id,
       rawHash: listings.rawHash,
       sources: listings.sources,
+      title: listings.title,
+      description: listings.description,
+      amenities: listings.amenities,
     })
     .from(listings)
     .where(
@@ -90,6 +94,11 @@ export async function upsertScrapedListing(
     });
 
     const id = crypto.randomUUID();
+    const embCols = await embeddingColumns({
+      title: n.title,
+      description: n.description,
+      amenities: n.amenities,
+    });
     await db.transaction(async (tx) => {
       await tx.insert(listings).values({
         id,
@@ -117,6 +126,7 @@ export async function upsertScrapedListing(
         isDuplicate: canonical ? true : false,
         sources: [{ source: n.source, url: n.externalUrl }],
         lastSeenAt: new Date(),
+        ...embCols,
       });
       await tx.insert(propertyDetails).values({
         listingId: id,
@@ -184,6 +194,21 @@ export async function upsertScrapedListing(
     amenities: n.amenities,
   });
 
+  // Re-embed seulement si le contenu textuel a changé (le rawHash couvre aussi
+  // prix/adresse/photos) : évite un appel embeddings inutile sur un simple
+  // changement de prix. Spread {} = embedding existant conservé.
+  const textChanged =
+    current.title !== n.title ||
+    current.description !== n.description ||
+    JSON.stringify(current.amenities) !== JSON.stringify(n.amenities);
+  const embCols = textChanged
+    ? await embeddingColumns({
+        title: n.title,
+        description: n.description,
+        amenities: n.amenities,
+      })
+    : {};
+
   await db.transaction(async (tx) => {
     await tx
       .update(listings)
@@ -202,6 +227,7 @@ export async function upsertScrapedListing(
         confidenceScore: score,
         confidenceBreakdown: breakdown,
         lastSeenAt: new Date(),
+        ...embCols,
       })
       .where(eq(listings.id, current.id));
     await tx
