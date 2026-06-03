@@ -35,7 +35,7 @@ export default function ModerationMiniMap({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: getMapStyle() as maplibregl.StyleSpecification,
+      style: getMapStyle() as unknown as maplibregl.StyleSpecification,
       center: [lng, lat],
       zoom: 10,
       interactive: false,
