@@ -33,7 +33,7 @@ function buildGeocodeQuery(place: string): string {
 export async function geocodePlace(
   place: string,
 ): Promise<{ lng: number; lat: number } | null> {
-  return geocode(buildGeocodeQuery(place));
+  return geocode(buildGeocodeQuery(place), { biasTana: true });
 }
 
 /**

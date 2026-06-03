@@ -39,6 +39,7 @@ describe("geocodePlace", () => {
     await geocodePlace("gare Soarano");
     expect(geocode).toHaveBeenCalledWith(
       "gare Soarano, Antananarivo, Madagascar",
+      { biasTana: true },
     );
   });
 });
