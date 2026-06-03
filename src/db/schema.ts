@@ -8,6 +8,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  real,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
@@ -112,6 +113,8 @@ export const listings = pgTable(
       .default([]),
     isDuplicate: boolean("is_duplicate").notNull().default(false),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    embedding: real("embedding").array(),
+    embeddingModel: text("embedding_model"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

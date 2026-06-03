@@ -50,6 +50,13 @@
       "when": 1780500000000,
       "tag": "0006_platform_features",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780519309686,
+      "tag": "0007_deep_ravenous",
+      "breakpoints": true
     }
   ]
 }
