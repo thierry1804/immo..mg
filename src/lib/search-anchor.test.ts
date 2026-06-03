@@ -16,7 +16,7 @@ describe("extractFilters radius (sans repère statique)", () => {
     expect(f.txn).toBe("rent");
     expect(f.propertyType).toBe("house");
     expect(f.radiusKm).toBe(2);
-    expect(f.excludeTitleContains).toBe("villa");
+    expect(f.excludeTitleContains).toBeUndefined();
     expect(f.nearLandmark).toBeUndefined();
   });
 
@@ -38,5 +38,19 @@ describe("enrichSearchFilters", () => {
     );
     expect(out.radiusKm).toBe(3);
     expect(out.nearLandmark).toBeUndefined();
+  });
+});
+
+describe("applyMaisonVillaHint", () => {
+  it("force le type maison sans exclure les titres 'villa'", () => {
+    const out = enrichSearchFilters("maison a vendre", {});
+    expect(out.propertyType).toBe("house");
+    expect(out.excludeTitleContains).toBeUndefined();
+  });
+
+  it("ne touche pas au type si 'villa' est cité", () => {
+    const out = enrichSearchFilters("villa a vendre", {});
+    expect(out.propertyType).toBeUndefined();
+    expect(out.excludeTitleContains).toBeUndefined();
   });
 });

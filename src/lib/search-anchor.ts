@@ -30,18 +30,14 @@ function foldQuery(text: string): string {
     .replace(/[\u0300-\u036F]/g, "");
 }
 
-/** « Maison » sans « villa » dans la requête → exclure les titres « villa ». */
+/** « Maison » sans « villa » → on suppose le type maison, sans exclure de titres. */
 function applyMaisonVillaHint(
   query: string,
   filters: SearchFilters,
 ): SearchFilters {
   const s = foldQuery(query);
   if (/\bmaison\b/.test(s) && !/\bvilla\b/.test(s)) {
-    return {
-      ...filters,
-      propertyType: filters.propertyType ?? "house",
-      excludeTitleContains: "villa",
-    };
+    return { ...filters, propertyType: filters.propertyType ?? "house" };
   }
   return filters;
 }
