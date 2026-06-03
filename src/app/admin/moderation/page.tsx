@@ -1,24 +1,34 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import ModerationListingCard from "@/components/admin/ModerationListingCard";
+import ModerationSourceFilters from "@/components/admin/ModerationSourceFilters";
+import Ico from "@/components/immo/Ico";
 import { db } from "@/db/client";
 import { listingPhotos, listings, propertyDetails } from "@/db/schema";
 import { getCurrentSession } from "@/lib/auth";
-import { formatPrice } from "@/lib/format";
-import ModerationActions from "./moderation-actions";
 
-const SOURCE_LABEL: Record<string, string> = {
-  user: "Utilisateur",
-  bazary: "Bazary",
-  jovenna: "Jovenna",
-  lacoteimmobiliere: "LaCoteImmobiliere",
-  coinafrique: "CoinAfrique",
-  facebook: "Facebook",
-};
-
-export default async function ModerationPage() {
+export default async function ModerationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ source?: string }>;
+}) {
   const { user } = await getCurrentSession();
   if (!user) redirect("/login");
   if (user.role !== "admin") redirect("/");
+
+  const { source: sourceFilter } = await searchParams;
+
+  const sourceCounts = await db
+    .select({
+      source: listings.source,
+      count: count(),
+    })
+    .from(listings)
+    .where(eq(listings.status, "pending_review"))
+    .groupBy(listings.source);
+
+  const totalPending = sourceCounts.reduce((n, r) => n + Number(r.count), 0);
 
   const rows = await db
     .select({
@@ -31,6 +41,7 @@ export default async function ModerationPage() {
       propertyType: listings.propertyType,
       price: listings.price,
       address: listings.address,
+      fokontany: listings.fokontany,
       lng: sql<number>`ST_X(${listings.location}::geometry)`,
       lat: sql<number>`ST_Y(${listings.location}::geometry)`,
       surfaceM2: propertyDetails.surfaceM2,
@@ -39,22 +50,26 @@ export default async function ModerationPage() {
     })
     .from(listings)
     .innerJoin(propertyDetails, eq(propertyDetails.listingId, listings.id))
-    .where(eq(listings.status, "pending_review"))
+    .where(
+      sourceFilter
+        ? and(
+            eq(listings.status, "pending_review"),
+            eq(listings.source, sourceFilter),
+          )
+        : eq(listings.status, "pending_review"),
+    )
     .orderBy(desc(listings.scrapedAt));
 
+  const ids = rows.map((r) => r.id);
   const photosByListing = new Map<string, string[]>();
-  if (rows.length > 0) {
+  if (ids.length > 0) {
     const photoRows = await db
       .select({
         listingId: listingPhotos.listingId,
         path: listingPhotos.path,
       })
       .from(listingPhotos)
-      .where(
-        sql`${listingPhotos.listingId} = ANY (${sql.raw(
-          `ARRAY[${rows.map((r) => `'${r.id}'`).join(",")}]`,
-        )})`,
-      )
+      .where(inArray(listingPhotos.listingId, ids))
       .orderBy(listingPhotos.displayOrder);
     for (const p of photoRows) {
       const list = photosByListing.get(p.listingId) ?? [];
@@ -64,75 +79,111 @@ export default async function ModerationPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="mb-1 text-2xl font-semibold">Modération</h1>
-      <p className="mb-6 text-sm text-zinc-600">
-        {rows.length} annonce{rows.length > 1 ? "s" : ""} en attente.
-      </p>
-
-      {rows.length === 0 ? (
-        <p className="rounded border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500">
-          Rien à modérer. Les annonces scrapées apparaîtront ici après chaque
-          tour du worker.
-        </p>
-      ) : (
-        <ul className="space-y-4">
-          {rows.map((l) => {
-            const photos = photosByListing.get(l.id) ?? [];
-            return (
-              <li
-                key={l.id}
-                className="grid gap-4 rounded border border-zinc-200 bg-white p-4 md:grid-cols-[160px_1fr_auto]"
+    <div className="min-h-[calc(100dvh-3.5rem)] bg-paper-2">
+      <div className="border-b border-line bg-paper">
+        <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Administration
+              </p>
+              <h1 className="mt-1 font-display text-2xl font-semibold text-navy md:text-3xl">
+                Modération
+              </h1>
+              <p className="mt-2 max-w-xl text-sm text-ink-2">
+                Validez les annonces importées avant publication sur la carte.
+                La position est recalculée à chaque approbation.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/admin/sources"
+                className="focus-gold rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-navy hover:border-navy-300"
               >
-                <div className="aspect-square overflow-hidden rounded bg-zinc-100">
-                  {photos[0] ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={photos[0]}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-400">
-                      pas de photo
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <h2 className="text-base font-semibold">{l.title}</h2>
-                    <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs">
-                      {SOURCE_LABEL[l.source] ?? l.source}
-                    </span>
-                  </div>
-                  <p className="text-sm text-zinc-600">{l.address}</p>
-                  <p className="mt-2 text-base font-semibold">
-                    {formatPrice(l.price, l.transactionType)}
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    {l.surfaceM2} m² · {l.rooms} pcs ·{" "}
-                    {l.lat.toFixed(4)}, {l.lng.toFixed(4)}
-                  </p>
-                  {l.externalUrl && (
-                    <a
-                      href={l.externalUrl}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="mt-2 inline-block text-xs text-blue-700 underline"
-                    >
-                      Voir l&apos;annonce source ↗
-                    </a>
-                  )}
-                  <p className="mt-2 line-clamp-3 text-sm text-zinc-700">
-                    {l.description}
-                  </p>
-                </div>
-                <ModerationActions id={l.id} />
+                Sources
+              </Link>
+              <Link
+                href="/"
+                className="focus-gold rounded-full bg-navy px-4 py-2 text-sm font-semibold text-paper hover:bg-navy-800"
+              >
+                Carte publique
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <div className="rounded-2xl border border-gold-soft bg-gold-tint px-4 py-3">
+              <p className="text-3xl font-semibold tabular-nums text-navy">
+                {totalPending}
+              </p>
+              <p className="text-xs font-medium text-ink-2">
+                en attente{totalPending > 1 ? "s" : ""}
+              </p>
+            </div>
+            {sourceFilter ? (
+              <p className="text-sm text-ink-2">
+                Filtre actif :{" "}
+                <span className="font-semibold text-navy">{sourceFilter}</span>
+              </p>
+            ) : null}
+          </div>
+
+          {sourceCounts.length > 0 ? (
+            <div className="mt-4">
+              <ModerationSourceFilters
+                counts={sourceCounts.map((r) => ({
+                  source: r.source,
+                  count: Number(r.count),
+                }))}
+                total={totalPending}
+                activeSource={sourceFilter}
+              />
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
+        {rows.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-line bg-white px-6 py-16 text-center shadow-card">
+            <Ico name="shield" size={28} className="mx-auto text-gold-700" />
+            <p className="mt-4 font-display text-lg font-semibold text-navy">
+              {sourceFilter
+                ? "Aucune annonce pour cette source"
+                : "Rien à modérer"}
+            </p>
+            <p className="mt-2 text-sm text-ink-2">
+              {sourceFilter ? (
+                <Link href="/admin/moderation" className="font-semibold underline">
+                  Voir toutes les sources
+                </Link>
+              ) : (
+                <>
+                  Lancez le worker ou une source depuis{" "}
+                  <Link href="/admin/sources" className="font-semibold underline">
+                    Sources & scrapers
+                  </Link>
+                  .
+                </>
+              )}
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-6">
+            {rows.map((l) => (
+              <li key={l.id}>
+                <ModerationListingCard
+                  listing={{
+                    ...l,
+                    propertyType: l.propertyType,
+                    photos: photosByListing.get(l.id) ?? [],
+                  }}
+                />
               </li>
-            );
-          })}
-        </ul>
-      )}
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

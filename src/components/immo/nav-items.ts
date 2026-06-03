@@ -22,6 +22,12 @@ export const APP_NAV: AppNavItem[] = [
     isActive: (p) => p === "/chat",
   },
   {
+    href: "/favorites",
+    label: "Favoris",
+    icon: "star",
+    isActive: (p) => p === "/favorites",
+  },
+  {
     href: "/compare",
     label: "Comparer",
     icon: "scale",

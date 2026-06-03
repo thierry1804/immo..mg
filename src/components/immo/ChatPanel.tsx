@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRef, useState } from "react";
-import { type SearchFilters, toParams } from "@/lib/search-filters";
+import type { SearchFilters } from "@/lib/search-filters";
+import type { PreviewListing } from "@/lib/search-preview";
 import Ico from "./Ico";
+import SearchSummaryCard from "./SearchSummaryCard";
 
 type Turn = { role: "user" | "assistant"; content: string };
 
@@ -12,6 +13,11 @@ type Result = {
   summary: string;
   clarification?: string;
   source: "openai" | "fallback";
+  preview?: {
+    total: number;
+    listings: PreviewListing[];
+    medianHint: string | null;
+  };
 };
 
 const GREETING =
@@ -23,7 +29,7 @@ export default function ChatPanel() {
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [filters, setFilters] = useState<SearchFilters | null>(null);
+  const [lastResult, setLastResult] = useState<Result | null>(null);
   const histRef = useRef<Turn[]>([]);
 
   async function send() {
@@ -44,8 +50,8 @@ export default function ChatPanel() {
       const botTurn: Turn = { role: "assistant", content: reply };
       setTurns((t) => [...t, botTurn]);
       histRef.current = [...histRef.current, userTurn, botTurn].slice(-12);
-      setFilters(
-        Object.keys(data.filters).length > 0 ? data.filters : null,
+      setLastResult(
+        Object.keys(data.filters).length > 0 ? data : null,
       );
     } catch {
       setTurns((t) => [
@@ -76,15 +82,17 @@ export default function ChatPanel() {
             </div>
           </div>
         ))}
-        {filters && (
-          <div className="flex justify-start">
-            <Link
-              href={`/?${toParams(filters).toString()}`}
-              className="inline-flex items-center gap-1.5 rounded-full bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:bg-gold-700"
-            >
-              <Ico name="pin" size={15} /> Voir les biens correspondants
-            </Link>
-          </div>
+        {busy && (
+          <p className="text-xs text-muted" role="status">
+            Analyse en cours…
+          </p>
+        )}
+        {lastResult?.preview && Object.keys(lastResult.filters).length > 0 && (
+          <SearchSummaryCard
+            filters={lastResult.filters}
+            summary={lastResult.summary}
+            preview={lastResult.preview}
+          />
         )}
       </div>
 

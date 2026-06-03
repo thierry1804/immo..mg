@@ -2,11 +2,20 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { scrapeSources } from "@/db/schema";
 import { buildDynamicScraper } from "./dynamic";
+import { acropoleScraper } from "./sources/acropole";
 import { coinAfriqueScraper } from "./sources/coinafrique";
+import { etranoScraper } from "./sources/etrano";
 import { facebookScraper } from "./sources/facebook";
+import { ofimScraper } from "./sources/ofim";
 import type { Scraper, ScraperSourceId } from "./types";
 
-const staticScrapers: Scraper[] = [coinAfriqueScraper, facebookScraper];
+const staticScrapers: Scraper[] = [
+  coinAfriqueScraper,
+  ofimScraper,
+  acropoleScraper,
+  etranoScraper,
+  facebookScraper,
+];
 
 export function listStaticScrapers(): Scraper[] {
   return staticScrapers;

@@ -5,6 +5,7 @@ import "./globals.css";
 import LogoutButton from "@/components/LogoutButton";
 import ChatFab from "@/components/immo/ChatFab";
 import CompareBar from "@/components/immo/CompareBar";
+import NotificationBell from "@/components/immo/NotificationBell";
 import MainNav from "@/components/immo/MainNav";
 import TabBar from "@/components/immo/TabBar";
 import { getCurrentSession } from "@/lib/auth";
@@ -57,6 +58,7 @@ export default async function RootLayout({
           >
             {user ? (
               <>
+                <NotificationBell />
                 {user.role === "admin" && (
                   <>
                     <Link

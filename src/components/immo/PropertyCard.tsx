@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Amenity } from "@/lib/amenities";
 import { formatPrice } from "@/lib/format";
 import { useCompare } from "@/lib/use-compare";
+import { useFavorites } from "@/lib/use-favorites";
 import AmenityTag from "./AmenityTag";
 import CompatibilityRing from "./CompatibilityRing";
 import ConfidenceBar from "./ConfidenceBar";
@@ -44,21 +45,25 @@ export type PropertySummary = {
 export default function PropertyCard({
   listing,
   topMatch = false,
+  onOpen,
 }: {
   listing: PropertySummary;
   topMatch?: boolean;
+  /** Opens drawer on home; falls back to full page navigation. */
+  onOpen?: () => void;
 }) {
   const priceLabel = formatPrice(listing.price, listing.transactionType);
   const shownAmenities = listing.amenities.slice(0, 4);
   const { ids, toggle, full } = useCompare();
   const inCompare = ids.includes(listing.id);
+  const { isFavorite, toggle: toggleFav, loaded: favLoaded } = useFavorites();
+  const fav = favLoaded && isFavorite(listing.id);
 
-  return (
-    <Link
-      href={`/listings/${listing.id}`}
-      className="focus-gold group block overflow-hidden rounded-2xl border border-line bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-22px_rgba(13,33,55,0.32)]"
-      style={topMatch ? { boxShadow: "var(--shadow-top-match)" } : undefined}
-    >
+  const cardClass =
+    "focus-gold group block overflow-hidden rounded-2xl border border-line bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-22px_rgba(13,33,55,0.32)]";
+
+  const inner = (
+    <>
       <div className="relative aspect-[16/10] w-full">
         {listing.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -75,6 +80,21 @@ export default function PropertyCard({
         <span className="absolute left-3 top-3 rounded-full bg-navy/90 px-2.5 py-1 text-[11px] font-semibold text-paper backdrop-blur">
           {listing.transactionType === "sale" ? "Vente" : "Location"}
         </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void toggleFav(listing.id);
+          }}
+          aria-pressed={fav}
+          title={fav ? "Retirer des favoris" : "Ajouter aux favoris"}
+          className={`absolute bottom-3 right-3 grid h-8 w-8 place-items-center rounded-full backdrop-blur transition ${
+            fav ? "bg-gold text-navy" : "bg-white/90 text-navy hover:bg-white"
+          }`}
+        >
+          <Ico name="star" size={14} />
+        </button>
         <button
           type="button"
           onClick={(e) => {
@@ -152,6 +172,36 @@ export default function PropertyCard({
           </p>
         )}
       </div>
+    </>
+  );
+
+  if (onOpen) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onOpen();
+          }
+        }}
+        className={cardClass}
+        style={topMatch ? { boxShadow: "var(--shadow-top-match)" } : undefined}
+      >
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={`/listings/${listing.id}`}
+      className={cardClass}
+      style={topMatch ? { boxShadow: "var(--shadow-top-match)" } : undefined}
+    >
+      {inner}
     </Link>
   );
 }

@@ -2,13 +2,20 @@
 
 import { useState } from "react";
 import type { SearchFilters } from "@/lib/search-filters";
+import type { PreviewListing } from "@/lib/search-preview";
 import Ico from "./Ico";
+import SearchSummaryCard from "./SearchSummaryCard";
 
 type Result = {
   filters: SearchFilters;
   summary: string;
   clarification?: string;
   source: "openai" | "fallback";
+  preview?: {
+    total: number;
+    listings: PreviewListing[];
+    medianHint: string | null;
+  };
 };
 
 const CHIPS = [
@@ -84,20 +91,19 @@ export default function ConversationalBar({
         </button>
       </form>
 
-      {result ? (
-        <p className="mt-2 px-1 text-xs text-ink-2" role="status" aria-live="polite">
-          {result.clarification ? (
-            <span className="text-gold-700">{result.clarification}</span>
-          ) : (
-            <>
-              <span className="font-medium">{result.summary}</span>
-              {result.source === "fallback" && (
-                <span className="text-muted"> · interprétation locale</span>
-              )}
-            </>
-          )}
+      {result?.clarification && (
+        <p className="mt-2 px-1 text-xs text-gold-700" role="status">
+          {result.clarification}
         </p>
-      ) : (
+      )}
+      {result && !result.clarification && result.preview && (
+        <SearchSummaryCard
+          filters={result.filters}
+          summary={result.summary}
+          preview={result.preview}
+        />
+      )}
+      {!result ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {CHIPS.map((c) => (
             <button
@@ -110,7 +116,7 @@ export default function ConversationalBar({
             </button>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

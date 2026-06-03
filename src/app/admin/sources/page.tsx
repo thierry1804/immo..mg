@@ -33,6 +33,9 @@ export default async function SourcesPage() {
           Sources intégrées
         </h2>
         <BuiltinSourceRow slug="coinafrique" label="CoinAfrique Madagascar" />
+        <BuiltinSourceRow slug="ofim" label="OFIM Madagascar (RSS)" />
+        <BuiltinSourceRow slug="acropole" label="Acropole Immo" />
+        <BuiltinSourceRow slug="etrano" label="e-trano" />
         <BuiltinSourceRow
           slug="facebook"
           label="Facebook (expérimental)"
@@ -77,6 +80,8 @@ export default async function SourcesPage() {
                       `· dernière exécution ${new Date(
                         s.lastRunAt,
                       ).toLocaleString("fr-FR")}`}
+                    {s.lastRunStats &&
+                      ` · ${s.lastRunStats.inserted} ins. / ${s.lastRunStats.updated} maj. / ${s.lastRunStats.errors} err.`}
                   </p>
                 </div>
                 <SourceActions

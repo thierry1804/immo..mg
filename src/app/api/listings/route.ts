@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, lt, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import {
@@ -21,6 +21,7 @@ import {
   listingInputSchema,
   listingsQuerySchema,
 } from "@/lib/validation";
+import { validatePhotoPaths } from "@/lib/upload";
 import { pricePerSqm } from "@/scrapers/enrich";
 
 export async function GET(req: Request) {
@@ -53,6 +54,18 @@ export async function GET(req: Request) {
 
   // Hide duplicates that have been folded into a canonical listing.
   conditions.push(eq(listings.isDuplicate, false));
+
+  const limit = q.limit ?? 200;
+  if (q.cursor) {
+    const cur = await db
+      .select({ createdAt: listings.createdAt })
+      .from(listings)
+      .where(eq(listings.id, q.cursor))
+      .limit(1);
+    if (cur[0]) {
+      conditions.push(lt(listings.createdAt, cur[0].createdAt));
+    }
+  }
 
   // amenities: CSV of canonical keys; require the listing to have all of them.
   const requestedAmenities = (q.amenities ?? "")
@@ -101,13 +114,15 @@ export async function GET(req: Request) {
     .innerJoin(propertyDetails, eq(propertyDetails.listingId, listings.id))
     .where(and(...conditions))
     .orderBy(orderBy)
-    .limit(200);
+    .limit(limit);
 
   // Declared compatibility (M5): only when the signed-in user has a profile.
   const profile = await currentProfile();
   if (!profile) {
     return NextResponse.json({
       listings: rows.map((r) => ({ ...r, compatibility: null })),
+      nextCursor:
+        rows.length === limit ? rows[rows.length - 1]?.id ?? null : null,
     });
   }
 
@@ -128,7 +143,11 @@ export async function GET(req: Request) {
     scored = scored.sort((a, b) => b.compatibility - a.compatibility);
   }
 
-  return NextResponse.json({ listings: scored });
+  return NextResponse.json({
+    listings: scored,
+    nextCursor:
+      rows.length === limit ? rows[rows.length - 1]?.id ?? null : null,
+  });
 }
 
 /** The signed-in user's compatibility profile, or null if none/anonymous. */
@@ -167,6 +186,12 @@ export async function POST(req: Request) {
     );
   }
   const input = parsed.data;
+  if (input.photoPaths.length > 0) {
+    const photos = await validatePhotoPaths(input.photoPaths);
+    if (!photos.ok) {
+      return NextResponse.json({ error: photos.error }, { status: 400 });
+    }
+  }
   const id = crypto.randomUUID();
 
   const fokontany = resolveFokontany(input.lng, input.lat);

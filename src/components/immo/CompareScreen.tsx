@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { shareListing } from "@/lib/visit-share";
 import { AMENITY_LABELS, type Amenity } from "@/lib/amenities";
 import { formatAriary, formatPrice } from "@/lib/format";
 import { useCompare } from "@/lib/use-compare";
@@ -97,7 +98,47 @@ export default function CompareScreen() {
   const cell = (winner: boolean) =>
     `px-4 py-3 align-top ${winner ? "bg-gold-tint font-semibold text-navy" : ""}`;
 
+  const verdicts: string[] = [];
+  if (best.realCost >= 0)
+    verdicts.push(`Meilleur coût réel : ${items[best.realCost]?.title ?? "—"}`);
+  if (best.compat >= 0)
+    verdicts.push(
+      `Meilleure compatibilité : ${items[best.compat]?.title ?? "—"}`,
+    );
+  if (best.confidence >= 0)
+    verdicts.push(
+      `Meilleure confiance : ${items[best.confidence]?.title ?? "—"}`,
+    );
+
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/compare?ids=${items.map((i) => i.id).join(",")}`
+      : "";
+
   return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold-soft bg-gold-tint/40 px-4 py-3">
+        <div>
+          <p className="font-display text-sm font-semibold text-navy">Verdict</p>
+          <ul className="mt-1 space-y-0.5 text-xs text-ink-2">
+            {verdicts.map((v) => (
+              <li key={v}>{v}</li>
+            ))}
+          </ul>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            void shareListing({
+              title: "Comparaison immo·mg",
+              url: shareUrl,
+            })
+          }
+          className="rounded-full bg-navy px-4 py-2 text-xs font-semibold text-paper"
+        >
+          Partager
+        </button>
+      </div>
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] border-collapse text-sm">
         <thead>
@@ -217,6 +258,7 @@ export default function CompareScreen() {
           </Row>
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

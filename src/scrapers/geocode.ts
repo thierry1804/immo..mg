@@ -23,22 +23,31 @@ function hash(address: string): string {
 
 type NominatimResult = { lon: string; lat: string };
 
+const NOMINATIM_TIMEOUT_MS = 15_000;
+
 const callNominatim = throttle(async (query: string) => {
   const url = new URL(`${NOMINATIM_URL}/search`);
   url.searchParams.set("q", query);
   url.searchParams.set("format", "json");
   url.searchParams.set("limit", "1");
   url.searchParams.set("countrycodes", "mg");
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT, "Accept-Language": "fr,en" },
-  });
-  if (!res.ok) return null;
-  const body = (await res.json()) as NominatimResult[];
-  if (body.length === 0) return null;
-  return {
-    lng: Number(body[0].lon),
-    lat: Number(body[0].lat),
-  };
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": USER_AGENT, "Accept-Language": "fr,en" },
+      signal: AbortSignal.timeout(NOMINATIM_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as NominatimResult[];
+    if (body.length === 0) return null;
+    return {
+      lng: Number(body[0].lon),
+      lat: Number(body[0].lat),
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[geocode] Nominatim indisponible: ${msg}`);
+    return null;
+  }
 });
 
 export async function geocode(
@@ -61,10 +70,20 @@ export async function geocode(
     return found;
   }
 
+  if (process.env.GEOCODE_SKIP_NETWORK === "true") {
+    memoryCache.set(key, null);
+    return null;
+  }
+
   const queryWithCountry = /madagascar/i.test(query)
     ? query
     : `${query}, Madagascar`;
-  const result = await callNominatim(queryWithCountry);
+  let result: { lng: number; lat: number } | null = null;
+  try {
+    result = await callNominatim(queryWithCountry);
+  } catch {
+    result = null;
+  }
   if (!result) {
     memoryCache.set(key, null);
     return null;

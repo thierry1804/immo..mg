@@ -41,7 +41,7 @@ async function processScrape(sourceId: string) {
   console.log(`[worker] ${sourceId} done`, stats);
   await db
     .update(scrapeSources)
-    .set({ lastRunAt: new Date() })
+    .set({ lastRunAt: new Date(), lastRunStats: stats })
     .where(eq(scrapeSources.slug, sourceId));
   return stats;
 }

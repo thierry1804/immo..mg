@@ -8,9 +8,13 @@ import {
   generateSessionToken,
   setSessionCookie,
 } from "@/lib/auth";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { credentialsSchema } from "@/lib/validation";
 
 export async function POST(req: Request) {
+  const limited = await enforceRateLimit(req, "auth-signup", 5, 3600);
+  if (limited) return limited;
+
   const body = await req.json().catch(() => null);
   const parsed = credentialsSchema.safeParse(body);
   if (!parsed.success) {

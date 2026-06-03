@@ -3,12 +3,31 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+type Props = {
+  mode: "login" | "signup";
+  email?: string;
+  password?: string;
+  onEmailChange?: (value: string) => void;
+  onPasswordChange?: (value: string) => void;
+};
+
+export function AuthForm({
+  mode,
+  email: controlledEmail,
+  password: controlledPassword,
+  onEmailChange,
+  onPasswordChange,
+}: Props) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [internalEmail, setInternalEmail] = useState("");
+  const [internalPassword, setInternalPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  const email = controlledEmail ?? internalEmail;
+  const password = controlledPassword ?? internalPassword;
+  const setEmail = onEmailChange ?? setInternalEmail;
+  const setPassword = onPasswordChange ?? setInternalPassword;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,8 +40,8 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? "Une erreur est survenue");
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(translateAuthError(data.error, mode));
         return;
       }
       router.push("/");
@@ -33,8 +52,8 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm">
+    <form onSubmit={submit} className="space-y-4">
+      <label className="block text-sm font-medium text-navy">
         Email
         <input
           type="email"
@@ -42,10 +61,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="rounded border border-zinc-300 px-3 py-2"
+          className="input mt-1.5"
+          placeholder="vous@exemple.mg"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="block text-sm font-medium text-navy">
         Mot de passe
         <input
           type="password"
@@ -54,17 +74,42 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           autoComplete={mode === "login" ? "current-password" : "new-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded border border-zinc-300 px-3 py-2"
+          className="input mt-1.5"
+          placeholder={mode === "signup" ? "8 caractères minimum" : undefined}
         />
       </label>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error ? (
+        <p
+          className="rounded-xl border border-absent/30 bg-absent-bg px-3 py-2 text-sm text-navy"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
       <button
         type="submit"
         disabled={pending}
-        className="rounded bg-zinc-900 px-4 py-2 text-white disabled:opacity-50"
+        className="focus-gold w-full rounded-full bg-navy px-4 py-3 text-sm font-semibold text-paper transition hover:bg-navy-800 disabled:opacity-50"
       >
-        {pending ? "..." : mode === "login" ? "Se connecter" : "Créer un compte"}
+        {pending
+          ? "Patientez…"
+          : mode === "login"
+            ? "Se connecter"
+            : "Créer mon compte"}
       </button>
     </form>
   );
+}
+
+function translateAuthError(raw: string | undefined, mode: "login" | "signup"): string {
+  switch (raw) {
+    case "Invalid email or password":
+      return "Email ou mot de passe invalide.";
+    case "Invalid credentials":
+      return "Identifiants incorrects.";
+    case "Email already registered":
+      return "Cet email est déjà utilisé.";
+    default:
+      return raw ?? (mode === "login" ? "Connexion impossible." : "Inscription impossible.");
+  }
 }

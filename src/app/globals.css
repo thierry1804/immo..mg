@@ -186,4 +186,25 @@ body {
   .score-fill {
     background-image: linear-gradient(90deg, var(--gold-700), var(--gold));
   }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-stagger > li {
+      animation: rise-in 0.35s ease-out both;
+    }
+    .animate-stagger > li:nth-child(1) {
+      animation-delay: 0ms;
+    }
+    .animate-stagger > li:nth-child(2) {
+      animation-delay: 50ms;
+    }
+    .animate-stagger > li:nth-child(3) {
+      animation-delay: 100ms;
+    }
+    .animate-stagger > li:nth-child(4) {
+      animation-delay: 150ms;
+    }
+    .animate-stagger > li:nth-child(n + 5) {
+      animation-delay: 200ms;
+    }
+  }
 }

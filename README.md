@@ -211,6 +211,9 @@ checkant juste la présence du cookie. Les pages serveur revérifient via
 **Bootstrap admin** : si `BOOTSTRAP_ADMIN_EMAIL` est défini et que cet email
 exact s'inscrit, son `role` est posé à `'admin'` directement.
 
+**Mots de passe dev** : les comptes affichés sur `/login` sont définis dans
+`src/lib/dev-access.ts`. Pour les aligner avec la base : `npm run db:sync-dev-passwords`.
+
 ---
 
 ## Création d'annonce
@@ -261,6 +264,13 @@ français + message Zod).
 **Hardcodés** (`src/scrapers/sources/*.ts`) :
 - `coinafrique` : implémentation complète pour mg.coinafrique.com.
   Configurable via `COINAFRIQUE_MAX_PAGES` et `COINAFRIQUE_FETCH_DETAILS`.
+- `ofim` : flux RSS `https://www.ofim.mg/rss.php` (50 dernières annonces).
+  `OFIM_SCRAPER_ENABLED` (défaut activé).
+- `acropole` : acropole-immo.net (pagination `op_page`, prix EUR convertis en
+  Ariary via `ACROPOLE_EUR_TO_AR_RATE`, défaut 4800). `ACROPOLE_MAX_PAGES`,
+  `ACROPOLE_FETCH_DETAILS`.
+- `etrano` : e-trano.com (UA navigateur requis). `ETRANO_MAX_PAGES`,
+  `ETRANO_FETCH_DETAILS`. Les annonces « prix sur demande » sont ignorées.
 - `facebook` : stub désactivé par défaut. Activation : `FB_SCRAPER_ENABLED=true`,
   `FB_USERNAME`, `FB_PASSWORD`, plus `npm i playwright && npx playwright
   install chromium`. **Viole les ToS Meta, à n'utiliser que pour
@@ -347,6 +357,8 @@ BullMQ. Le worker traite, géocode, upsert ; les annonces atterrissent en
 | `SCRAPE_INTERVAL_HOURS` | intervalle entre runs récurrents (défaut 6) |
 | `BOOTSTRAP_ADMIN_EMAIL` | l'email exact qui devient admin à l'inscription |
 | `COINAFRIQUE_MAX_PAGES`, `COINAFRIQUE_FETCH_DETAILS` | tuning du scraper hardcodé |
+| `OFIM_SCRAPER_ENABLED` | scraper OFIM RSS (on par défaut) |
+| `ACROPOLE_*`, `ETRANO_*` | tuning scrapers agences (pages, détails, taux EUR→Ar) |
 | `FB_SCRAPER_ENABLED`, `FB_USERNAME`, `FB_PASSWORD` | scraper Facebook (off par défaut) |
 
 ---
@@ -359,7 +371,8 @@ npm run dev                  # Next.js dev sur :3000
 npm run worker               # worker BullMQ
 npm run scrape:once -- <slug># enqueue un scrape immédiat
 npm run lint
-npx tsc --noEmit
+npm run typecheck
+npm run alert:digest         # notifications + emails de matching profil
 
 # Migrations
 npm run db:generate          # crée un fichier .sql depuis schema.ts
@@ -376,9 +389,10 @@ docker exec geomarket-redis redis-cli ping
 
 ## Limites connues
 
-- **Pas de dédoublonnage cross-source** : le même bien sur deux sites est
-  inséré deux fois. Implémenter en V3 (fingerprint titre+prix+coordonnées
-  arrondies).
+- **Dédoublonnage cross-source (heuristique)** : lors d’un scrape, les biens
+  proches (150 m) avec prix/surface/transaction similaires sont fusionnés dans
+  `sources` JSON ; les doublons sont marqués `is_duplicate`. Pas de fusion
+  rétroactive parfait sur l’historique.
 - **Pas de tests automatisés sur les scrapers HTML** : les sélecteurs
   cassent quand un site change son markup. Surveiller les stats du worker
   (`inserted/dropped/errors`).

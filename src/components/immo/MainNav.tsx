@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMounted } from "@/lib/use-mounted";
 import { APP_NAV } from "./nav-items";
 
 /**
@@ -9,6 +10,7 @@ import { APP_NAV } from "./nav-items";
  */
 export default function MainNav() {
   const pathname = usePathname();
+  const mounted = useMounted();
 
   return (
     <nav
@@ -16,7 +18,7 @@ export default function MainNav() {
       className="hidden items-center gap-1 md:flex"
     >
       {APP_NAV.map((item) => {
-        const active = item.isActive(pathname);
+        const active = mounted && item.isActive(pathname);
         return (
           <Link
             key={item.href}

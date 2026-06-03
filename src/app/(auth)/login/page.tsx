@@ -1,21 +1,30 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import AuthShell from "@/components/auth/AuthShell";
 import { getCurrentSession } from "@/lib/auth";
-import { AuthForm } from "../auth-form";
+import { getDevLoginPanel } from "@/lib/dev-access";
+import LoginForm from "./login-form";
 
 export default async function LoginPage() {
   const { user } = await getCurrentSession();
   if (user) redirect("/");
+
+  const panel = getDevLoginPanel();
+
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <h1 className="mb-6 text-2xl font-semibold">Se connecter</h1>
-      <AuthForm mode="login" />
-      <p className="mt-6 text-sm text-zinc-600">
-        Pas encore de compte ?{" "}
-        <Link href="/signup" className="underline">
-          Créer un compte
-        </Link>
-      </p>
-    </div>
+    <AuthShell
+      title="Se connecter"
+      subtitle="Retrouvez vos favoris, votre profil conseiller et l’accès modération si vous êtes administrateur."
+      footer={
+        <>
+          Pas encore de compte ?{" "}
+          <Link href="/signup" className="focus-gold font-semibold text-navy underline-offset-2 hover:underline">
+            Créer un compte
+          </Link>
+        </>
+      }
+    >
+      <LoginForm panel={panel} />
+    </AuthShell>
   );
 }

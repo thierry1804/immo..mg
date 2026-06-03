@@ -43,6 +43,13 @@
       "when": 1780426891692,
       "tag": "0005_user_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780500000000,
+      "tag": "0006_platform_features",
+      "breakpoints": true
     }
   ]
 }

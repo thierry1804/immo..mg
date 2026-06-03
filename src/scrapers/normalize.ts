@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { extractAmenities } from "@/lib/amenities";
-import { resolveFokontany } from "@/lib/fokontany";
-import { geocode } from "./geocode";
+import { resolveListingLocation } from "@/lib/listing-location";
 import type {
   NormalizedListing,
   PropertyType,
@@ -82,11 +81,14 @@ export async function normalizeListing(
   const surface = parseSurface(raw.rawSurface);
   const rooms = parseRooms(raw.rawRooms);
 
-  const coord = await geocode(raw.rawAddress);
-  if (!coord) return null;
+  const located = await resolveListingLocation({
+    title: raw.title,
+    description: raw.description,
+    address: raw.rawAddress,
+  });
+  if (!located) return null;
 
   const amenities = extractAmenities(`${raw.title} ${raw.description}`);
-  const fokontany = resolveFokontany(coord.lng, coord.lat);
 
   return {
     source: raw.source,
@@ -97,14 +99,14 @@ export async function normalizeListing(
     price,
     transactionType,
     propertyType,
-    address: raw.rawAddress.trim().slice(0, 500),
-    lng: coord.lng,
-    lat: coord.lat,
+    address: located.address,
+    lng: located.lng,
+    lat: located.lat,
     surfaceM2: surface || 1,
     rooms: rooms || 0,
     imageUrls: raw.imageUrls.slice(0, 20),
     rawHash: hashRawListing(raw),
     amenities,
-    fokontany,
+    fokontany: located.fokontany,
   };
 }

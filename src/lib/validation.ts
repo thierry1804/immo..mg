@@ -31,7 +31,16 @@ export const listingInputSchema = z.object({
   rooms: z.number().int().min(0).max(100),
   bedrooms: z.number().int().min(0).max(100).optional().nullable(),
   bathrooms: z.number().int().min(0).max(100).optional().nullable(),
-  photoPaths: z.array(z.string()).max(20).default([]),
+  photoPaths: z
+    .array(
+      z
+        .string()
+        .regex(/^\/uploads\/[a-f0-9-]+\.(jpg|png|webp)$/, {
+          message: "Invalid upload path",
+        }),
+    )
+    .max(20)
+    .default([]),
   amenities: z.array(amenityEnum).max(AMENITIES.length).default([]),
 });
 export type ListingInput = z.infer<typeof listingInputSchema>;
@@ -92,5 +101,7 @@ export const listingsQuerySchema = z.object({
   sort: z
     .enum(["relevance", "price_asc", "price_desc", "surface", "confidence", "compat"])
     .optional(),
+  cursor: z.string().uuid().optional(),
+  limit: numeric.int().min(1).max(200).optional(),
 });
 export type ListingsQuery = z.infer<typeof listingsQuerySchema>;

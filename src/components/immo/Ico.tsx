@@ -67,6 +67,7 @@ export default function Ico({ name, size = 18, ...rest }: Props) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      suppressHydrationWarning
       {...rest}
     >
       {PATHS[name]}

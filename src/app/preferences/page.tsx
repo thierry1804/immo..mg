@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import PreferencesForm from "@/components/immo/PreferencesForm";
+import { db } from "@/db/client";
+import { userProfiles } from "@/db/schema";
 import { getCurrentSession } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -9,8 +13,21 @@ export const metadata: Metadata = {
     "Déclarez vos critères pour obtenir un score de compatibilité sur chaque bien.",
 };
 
-export default async function PreferencesPage() {
+export default async function PreferencesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ new?: string }>;
+}) {
   const { user } = await getCurrentSession();
+  const sp = await searchParams;
+  if (user && sp.new !== "1") {
+    const rows = await db
+      .select({ userId: userProfiles.userId })
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, user.id))
+      .limit(1);
+    if (rows.length === 0) redirect("/onboarding");
+  }
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:px-6 md:py-12">

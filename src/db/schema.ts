@@ -50,6 +50,9 @@ export const listingStatus = pgEnum("listing_status", [
 export const BUILTIN_SOURCE_SLUGS = [
   "user",
   "coinafrique",
+  "ofim",
+  "acropole",
+  "etrano",
   "facebook",
 ] as const;
 export type BuiltinSourceSlug = (typeof BUILTIN_SOURCE_SLUGS)[number];
@@ -116,6 +119,8 @@ export const listings = pgTable(
   (t) => [
     index("listings_location_idx").using("gist", t.location),
     index("listings_amenities_idx").using("gin", t.amenities),
+    index("listings_status_duplicate_idx").on(t.status, t.isDuplicate),
+    index("listings_fokontany_txn_idx").on(t.fokontany, t.transactionType),
   ],
 );
 
@@ -178,10 +183,67 @@ export const scrapeSources = pgTable("scrape_sources", {
   maxPages: integer("max_pages").notNull().default(1),
   throttleMs: integer("throttle_ms").notNull().default(2000),
   lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  lastRunStats: jsonb("last_run_stats").$type<{
+    inserted: number;
+    updated: number;
+    unchanged: number;
+    dropped: number;
+    errors: number;
+  }>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const userFavorites = pgTable(
+  "user_favorites",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    listingId: text("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("user_favorites_user_idx").on(t.userId)],
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    listingId: text("listing_id").references(() => listings.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("notifications_user_unread_idx").on(t.userId, t.readAt)],
+);
+
+export const listingReports = pgTable("listing_reports", {
+  id: text("id").primaryKey(),
+  listingId: text("listing_id")
+    .notNull()
+    .references(() => listings.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  reason: text("reason").notNull(),
+  detail: text("detail"),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });

@@ -20,7 +20,17 @@ export const FOKONTANY: Fokontany[] = [
   { name: "Isoraka", lng: 47.5197, lat: -18.9119, radiusKm: 0.9 },
   { name: "Antaninarenina", lng: 47.5244, lat: -18.9089, radiusKm: 0.9 },
   { name: "Ambatobe", lng: 47.5489, lat: -18.8736, radiusKm: 1.5 },
-  { name: "Ivato", lng: 47.4789, lat: -18.7969, radiusKm: 2.5 },
+  /** Agglomération Ivato (hors piste) — centroïde côté Antanetibe / Paon d'Or */
+  { name: "Ivato", lng: 47.472, lat: -18.832, radiusKm: 2.2 },
+  { name: "Anjomakely", lng: 47.465, lat: -18.818, radiusKm: 1.5 },
+  /** Antanetibe : zone Paon d'Or / Leader Price, pas l'aéroport */
+  { name: "Antanetibe", lng: 47.4697, lat: -18.8353, radiusKm: 1.5 },
+  {
+    name: "Andrefan'ambohijanahary",
+    lng: 47.448,
+    lat: -18.872,
+    radiusKm: 2,
+  },
   { name: "Tsimbazaza", lng: 47.5256, lat: -18.9242, radiusKm: 1.0 },
   { name: "Andohalo", lng: 47.5314, lat: -18.9203, radiusKm: 0.9 },
 ];
@@ -104,11 +114,15 @@ export function fokontanyGeoJSON(steps = 48): {
   return { type: "FeatureCollection", features };
 }
 
-/** Find the first neighborhood named in free text (NLP / autocomplete). */
+/** Find the longest neighborhood name mentioned in free text (NLP / autocomplete). */
 export function matchFokontanyByName(text: string): string | null {
   const folded = fold(text);
+  let best: { name: string; len: number } | null = null;
   for (const f of FOKONTANY) {
-    if (folded.includes(fold(f.name))) return f.name;
+    const key = fold(f.name);
+    if (folded.includes(key) && (!best || key.length > best.len)) {
+      best = { name: f.name, len: key.length };
+    }
   }
-  return null;
+  return best?.name ?? null;
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import { reverseGeocode } from "@/lib/reverse-geocode";
 
 const querySchema = z.object({
@@ -9,6 +10,9 @@ const querySchema = z.object({
 });
 
 export async function GET(req: Request) {
+  const limited = await enforceRateLimit(req, "geocode-reverse", 30, 60);
+  if (limited) return limited;
+
   const { user } = await getCurrentSession();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
