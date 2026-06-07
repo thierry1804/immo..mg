@@ -27,6 +27,30 @@ describe("extractPlacePhrase", () => {
       ),
     ).toMatch(/galaxy andraharo/i);
   });
+
+  it("isole le lieu après « rayon de Nkm de … »", () => {
+    expect(
+      extractPlacePhrase("maison à louer dans 1 rayon de 2km de sodiama"),
+    ).toBe("sodiama");
+  });
+
+  it("isole le lieu après « dans un rayon de Nkm de … »", () => {
+    expect(
+      extractPlacePhrase("maison à louer dans un rayon de 2km de sodiama"),
+    ).toBe("sodiama");
+  });
+
+  it("isole le lieu après « à Nkm de … »", () => {
+    expect(extractPlacePhrase("appartement à 3 km de Ankorondrano")).toBe(
+      "Ankorondrano",
+    );
+  });
+
+  it("ignore la queue de phrase après le lieu", () => {
+    expect(
+      extractPlacePhrase("maison dans un rayon de 2km de sodiama avec piscine"),
+    ).toBe("sodiama");
+  });
 });
 
 describe("geocodePlace", () => {
@@ -49,13 +73,24 @@ describe("resolveSearchPlace", () => {
     vi.mocked(geocode).mockReset();
   });
 
-  it("remplit nearLng/nearLat et nearLabel via géocodeur", async () => {
-    vi.mocked(geocode).mockResolvedValueOnce({ lng: 47.521, lat: -18.903 });
+  it("utilise le repère codé Gare Soarano sans appeler Nominatim", async () => {
     const out = await resolveSearchPlace(
       "maison 2km autour de la gare soarano",
       { txn: "rent", radiusKm: 2, propertyType: "house" },
     );
-    expect(out.nearLabel).toMatch(/gare soarano/i);
+    expect(out.nearLabel).toBe("Gare Soarano");
+    expect(out.nearLng).toBeCloseTo(47.521, 2);
+    expect(out.nearLat).toBeCloseTo(-18.903, 2);
+    expect(geocode).not.toHaveBeenCalled();
+  });
+
+  it("remplit nearLng/nearLat via géocodeur pour un lieu hors repères", async () => {
+    vi.mocked(geocode).mockResolvedValueOnce({ lng: 47.521, lat: -18.903 });
+    const out = await resolveSearchPlace(
+      "maison 2km autour de Galaxy andraharo",
+      { txn: "rent", radiusKm: 2, propertyType: "house" },
+    );
+    expect(out.nearLabel).toMatch(/galaxy andraharo/i);
     expect(out.nearLng).toBeCloseTo(47.521, 2);
     expect(out.nearLat).toBeCloseTo(-18.903, 2);
     expect(out.fokontany).toBeUndefined();

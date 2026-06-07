@@ -1,14 +1,33 @@
 import { fokontanyCentroid, matchFokontanyByName } from "@/lib/fokontany";
+import { matchLandmark } from "@/lib/landmarks";
 import type { SearchFilters } from "@/lib/llm/extract-filters";
 import { geocode } from "@/scrapers/geocode";
 
 const PLACE_STOP =
   /^(louer|location|vente|madagascar|tananarive|antananarivo|maison|villa|appartement|terrain)$/i;
 
+// Mots de remplissage / bruit qui précèdent parfois le lieu réellement capturé
+// (verbe de transaction, type de bien, reste d'une expression de rayon…).
+const LEADING_NOISE =
+  /^(?:a|à|au|aux|dans|en|de|d['']|du|des|la|le|les|l['']|un|une|louer|location|vente|vendre|acheter|achat|maison|villa|appartement|appart|studio|terrain|local|bureau|rayon|environ|proche|pres|près|autour|vers|km|\d+(?:[.,]\d+)?\s*km|\d+(?:[.,]\d+)?)[\s,]+/i;
+
+/** Retire les mots de remplissage en tête d'une phrase de lieu capturée. */
+function stripLeadingNoise(phrase: string): string {
+  let p = phrase.trim();
+  let prev: string;
+  do {
+    prev = p;
+    p = p.replace(LEADING_NOISE, "").trim();
+  } while (p !== prev && p.length > 0);
+  return p;
+}
+
 /** Extrait un lieu cité dans la requête (repère, quartier, « autour de … »). */
 export function extractPlacePhrase(query: string): string | null {
   const q = query.trim();
   const patterns = [
+    // Lieu après une expression de rayon : « rayon de 2km de PLACE », « à 3 km de PLACE ».
+    /\bkm\b\s*(?:autour\s+)?(?:de|d['']|du|des)\s+(?:la\s+|le\s+|les\s+|l['']\s*)?(.+?)(?:\s*,|\s+avec\b|\s+budget\b|\s+qui\b|\s+environ\b|\s*$)/i,
     /autour\s+(?:de|d[''])\s*(?:la\s+|le\s+|l[''])?(.+?)(?:\s*$|\s+environ|\s*,)/i,
     /(?:près|proche)\s+(?:de\s+)?(?:la\s+|le\s+|l[''])?(.+?)(?:\s*$|\s*,|\s+environ)/i,
     /(?:région|region)\s+d['']?\s*(.+?)(?:\s+sur|\s+environ|\s*,|$)/i,
@@ -17,7 +36,7 @@ export function extractPlacePhrase(query: string): string | null {
   for (const re of patterns) {
     const m = re.exec(q);
     if (!m?.[1]) continue;
-    const phrase = m[1].trim().replace(/\s+/g, " ");
+    const phrase = stripLeadingNoise(m[1].trim().replace(/\s+/g, " "));
     if (phrase.length >= 3 && !PLACE_STOP.test(phrase)) return phrase;
   }
   return matchFokontanyByName(q);
@@ -50,9 +69,23 @@ export async function resolveSearchPlace(
     return out;
   }
 
+  // Préférer le lieu explicitement extrait par le LLM (near → nearLabel) ;
+  // se rabattre sur l'analyse lexicale de la requête, puis le fokontany.
   const phrase =
-    extractPlacePhrase(query) ?? out.nearLabel ?? out.fokontany ?? null;
+    out.nearLabel ?? extractPlacePhrase(query) ?? out.fokontany ?? null;
   if (!phrase) return out;
+
+  const landmark = matchLandmark(phrase);
+  if (landmark) {
+    return {
+      ...out,
+      nearLng: landmark.lng,
+      nearLat: landmark.lat,
+      nearLabel: landmark.name,
+      fokontany: undefined,
+      nearLandmark: undefined,
+    };
+  }
 
   const coord = await geocodePlace(phrase);
   if (coord) {

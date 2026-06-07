@@ -39,6 +39,7 @@ const filtersSchema = z
     minSurface: z.number().int().positive().nullish(),
     minRooms: z.number().int().nonnegative().nullish(),
     fokontany: z.string().nullish(),
+    near: z.string().nullish(),
     radiusKm: z.number().positive().max(50).nullish(),
     amenities: z.array(z.enum(AMENITIES)).nullish(),
   })
@@ -60,6 +61,7 @@ function clean(raw: z.infer<typeof filtersSchema>): SearchFilters {
   if (raw.minSurface != null) out.minSurface = raw.minSurface;
   if (raw.minRooms != null) out.minRooms = raw.minRooms;
   if (raw.fokontany) out.fokontany = raw.fokontany;
+  if (raw.near) out.nearLabel = raw.near;
   if (raw.radiusKm != null) out.radiusKm = raw.radiusKm;
   if (raw.amenities?.length) out.amenities = raw.amenities;
   return out;
@@ -84,6 +86,7 @@ const JSON_SCHEMA = {
           "minSurface",
           "minRooms",
           "fokontany",
+          "near",
           "radiusKm",
           "amenities",
         ],
@@ -98,6 +101,7 @@ const JSON_SCHEMA = {
           minSurface: { type: ["integer", "null"] },
           minRooms: { type: ["integer", "null"] },
           fokontany: { type: ["string", "null"] },
+          near: { type: ["string", "null"] },
           radiusKm: { type: ["number", "null"] },
           amenities: {
             type: ["array", "null"],
@@ -117,7 +121,8 @@ function systemPrompt(): string {
     "À partir du message de l'utilisateur, extrais des filtres de recherche structurés.",
     "Les prix sont en Ariary (Ar). Convertis « millions »/« M » (×1 000 000) et « k » (×1 000) en entiers.",
     `Quartiers (fokontany) reconnus : ${FOKONTANY.map((f) => f.name).join(", ")}. N'utilise que ces noms, sinon null.`,
-    "radiusKm : rayon en km autour d'un lieu cité (ex. 5 pour « 5 km autour de la gare Soarano »). Le lieu sera géocodé automatiquement — ne mets pas de coordonnées.",
+    "near : le nom du lieu/repère cité autour duquel chercher (ex. « Sodiama », « gare Soarano », « Galaxy Andraharo », « lycée français »). Extrais uniquement le nom du lieu, sans les mots « autour de », « près de », « à 2 km de », etc. Le lieu sera géocodé automatiquement — ne mets pas de coordonnées. null si aucun lieu n'est cité.",
+    "radiusKm : rayon en km autour du lieu cité dans near (ex. 5 pour « 5 km autour de la gare Soarano », 2 pour « dans un rayon de 2 km de Sodiama »). Si un lieu (near) est cité avec « autour de »/« près de »/« à proximité » mais sans distance, mets radiusKm = 2 par défaut.",
     "fokontany : uniquement si l'utilisateur cite un quartier connu sans repère précis et sans rayon. Sinon null.",
     `Équipements possibles (clés exactes) : ${AMENITIES.join(", ")}.`,
     "txn = rent pour louer/location, sale pour acheter/vente.",
