@@ -65,6 +65,31 @@ export function extractLocationPhrase(
   return null;
 }
 
+// Fragments de mesure à retirer du suffixe de titre (« 4 pièces », « 300 m² »…).
+const MEASURE_NOISE =
+  /\b\d+(?:[.,]\d+)?\s*(?:pièces?|pcs|chambres?|m²|m2|ha|are?s?)\b/gi;
+
+/**
+ * Beaucoup d'annonces (CoinAfrique) portent leur ville/quartier dans le suffixe
+ * du titre : « Vente villas 6 pièces - Toamasina », « Location villa - Nanisana ».
+ * On extrait ce segment (après le dernier « - ») comme lieu le plus fiable,
+ * géocodable à l'échelle de tout Madagascar (et pas seulement Antananarivo).
+ */
+export function extractTitlePlace(title: string): string | null {
+  const t = decodeHtmlEntities(title);
+  const parts = t.split(/\s+-\s+/);
+  if (parts.length < 2) return null;
+  const last = parts[parts.length - 1]
+    .replace(MEASURE_NOISE, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (last.length < 3 || last.length > 40) return null;
+  if (/^madagascar$/i.test(last)) return null;
+  if (GENERIC_ADDRESS.test(last)) return null; // « Antananarivo » seul → géré ailleurs
+  if (!/[a-zà-ÿ]{3,}/i.test(last)) return null; // doit contenir un vrai nom de lieu
+  return last;
+}
+
 function fokontanyCentroid(name: string): { lng: number; lat: number } {
   const f = FOKONTANY.find((n) => n.name === name);
   if (!f) throw new Error(`Unknown fokontany: ${name}`);
@@ -201,6 +226,18 @@ export async function resolveListingLocation(
 
   const preciseQuery = buildPreciseGeocodeQuery(title, description, phrase);
   const queries: string[] = [];
+  // Lieu issu du suffixe de titre (ville/quartier) : géocodage Madagascar entier,
+  // sans forcer Antananarivo — c'est le signal le plus fiable pour CoinAfrique.
+  const titlePlace = extractTitlePlace(input.title);
+  if (titlePlace) {
+    queries.push(`${titlePlace}, Madagascar`);
+    // Repli ville : « Toamasina Foulpointe » → « Toamasina ». Le premier mot est
+    // en général la ville ; les petits villages échouent au filtre d'importance.
+    const city = titlePlace.split(/\s+/)[0];
+    if (city.length >= 4 && city.toLowerCase() !== titlePlace.toLowerCase()) {
+      queries.push(`${city}, Madagascar`);
+    }
+  }
   if (preciseQuery) queries.push(preciseQuery);
   if (phrase && !queries.includes(buildGeocodeQuery(phrase))) {
     queries.push(buildGeocodeQuery(phrase));

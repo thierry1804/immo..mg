@@ -3,9 +3,44 @@ import {
   buildPreciseGeocodeQuery,
   decodeHtmlEntities,
   extractLocationPhrase,
+  extractTitlePlace,
 } from "./listing-location";
 import { matchLandmark } from "./landmarks";
 import { matchFokontanyByName } from "./fokontany";
+
+describe("extractTitlePlace", () => {
+  it("extrait la ville après le suffixe de titre", () => {
+    expect(extractTitlePlace("vente villas 6 pièces - toamasina")).toBe(
+      "toamasina",
+    );
+  });
+  it("extrait une ville + sous-zone", () => {
+    expect(
+      extractTitlePlace("vente villas 5 pièces - toamasina tetezambaro"),
+    ).toBe("toamasina tetezambaro");
+  });
+  it("extrait un quartier de Tana", () => {
+    expect(extractTitlePlace("Location villa -  Nanisana")).toBe("Nanisana");
+  });
+  it("ignore « Madagascar » seul", () => {
+    expect(extractTitlePlace("Vente  villa - Madagascar")).toBeNull();
+  });
+  it("ignore « Antananarivo » seul", () => {
+    expect(
+      extractTitlePlace("Location villas 2 pièces - Antananarivo"),
+    ).toBeNull();
+  });
+  it("ignore un titre sans suffixe", () => {
+    expect(extractTitlePlace("Location annuelle")).toBeNull();
+  });
+  it("ignore un suffixe trop long (phrase descriptive OFIM)", () => {
+    expect(
+      extractTitlePlace(
+        "Location Maison ANTANANARIVO - Madagascar - A LOUER - Coquette villa neuve située à Anjomakely Ivato",
+      ),
+    ).toBeNull();
+  });
+});
 
 describe("decodeHtmlEntities", () => {
   it("decodes apostrophe entities from OFIM titles", () => {

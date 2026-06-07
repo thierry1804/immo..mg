@@ -4,7 +4,6 @@ import { db } from "@/db/client";
 import { listings } from "@/db/schema";
 import { AuthError, requireAdmin } from "@/lib/auth";
 import {
-  computeConfidence,
   markConfidenceCheck,
   scoreFromBreakdown,
   type ConfidenceCheck,
@@ -56,13 +55,9 @@ export async function POST(
     );
   }
 
-  let breakdown = row.confidenceBreakdown ?? [];
+  let breakdown = (row.confidenceBreakdown ?? []) as ConfidenceCheck[];
   if (located.fokontany) {
-    breakdown = markConfidenceCheck(
-      breakdown,
-      "fokontany" satisfies ConfidenceCheck,
-      true,
-    );
+    breakdown = markConfidenceCheck(breakdown, "fokontany");
   }
   const confidenceScore = scoreFromBreakdown(breakdown);
 
