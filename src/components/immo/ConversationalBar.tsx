@@ -62,7 +62,8 @@ export default function ConversationalBar({
       });
       const data = (await res.json()) as Result;
       setResult(data);
-      if (Object.keys(data.filters).length > 0) onFilters(data.filters);
+      if (Object.keys(data.filters).length > 0 && !data.clarification)
+        onFilters(data.filters);
     } catch {
       setResult(null);
     } finally {

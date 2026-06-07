@@ -36,6 +36,10 @@ export async function searchPreview(
   if (filters.maxPrice !== undefined)
     conditions.push(sql`${listings.price} <= ${filters.maxPrice}`);
   const locFilter = listingLocationCondition(filters);
+  // Rayon demandé mais centre introuvable → ne pas renvoyer tout le catalogue.
+  if (filters.radiusKm != null && filters.radiusKm > 0 && !locFilter) {
+    return { total: 0, listings: [], medianHint: null };
+  }
   if (locFilter) conditions.push(locFilter);
   const titleEx = titleExclusionCondition(filters.excludeTitleContains);
   if (titleEx) conditions.push(titleEx);

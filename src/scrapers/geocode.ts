@@ -57,7 +57,13 @@ const callNominatim = throttle(async (query: string, opts: { biasTana?: boolean 
     const body = (await res.json()) as NominatimResult[];
     if (body.length === 0) return null;
     const first = body[0];
-    if (typeof first.importance === "number" && first.importance < MIN_IMPORTANCE) {
+    // Avec viewbox+bounded (biais Tana), le résultat est déjà contraint géographiquement ;
+    // ne pas rejeter sur importance (ex. « gare Soarano » → POI OSM à faible score).
+    if (
+      !opts.biasTana &&
+      typeof first.importance === "number" &&
+      first.importance < MIN_IMPORTANCE
+    ) {
       return null;
     }
     return {

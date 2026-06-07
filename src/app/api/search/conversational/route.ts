@@ -36,11 +36,22 @@ export async function POST(req: Request) {
     Object.keys(raw.filters).length > 0
       ? await resolveSearchPlace(parsed.data.query, raw.filters)
       : raw.filters;
+  const geoUnresolved =
+    filters.radiusKm != null &&
+    filters.radiusKm > 0 &&
+    filters.nearLng == null &&
+    filters.nearLat == null &&
+    !filters.fokontany;
   const result = {
     ...raw,
     filters,
     summary:
       Object.keys(filters).length > 0 ? summarize(filters) : raw.summary,
+    clarification:
+      raw.clarification ??
+      (geoUnresolved
+        ? `Je n'ai pas pu localiser « ${filters.nearLabel ?? "ce lieu"} » sur la carte. Précisez un quartier connu ou un repère à Antananarivo.`
+        : undefined),
   };
   const preview =
     Object.keys(result.filters).length > 0

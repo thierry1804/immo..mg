@@ -41,6 +41,18 @@ export const LANDMARKS: Landmark[] = [
     fokontany: "Ivato",
     aliases: ["croc farm", "crocfarm"],
   },
+  {
+    name: "Gare Soarano",
+    lng: 47.5210347,
+    lat: -18.9031635,
+    fokontany: "Antaninarenina",
+    aliases: [
+      "gare soarano",
+      "gare de soarano",
+      "soarano",
+      "station soarano",
+    ],
+  },
 ];
 
 function fold(text: string): string {

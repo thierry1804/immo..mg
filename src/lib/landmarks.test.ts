@@ -13,6 +13,13 @@ describe("matchLandmark", () => {
       )?.name,
     ).toBe("Paon d'Or");
   });
+
+  it("matches Gare Soarano", () => {
+    expect(matchLandmark("gare soarano")?.name).toBe("Gare Soarano");
+    expect(matchLandmark("2 km autour de la gare de soarano")?.name).toBe(
+      "Gare Soarano",
+    );
+  });
 });
 
 describe("extractProximityTarget", () => {
