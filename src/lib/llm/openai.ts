@@ -13,6 +13,7 @@ import {
   summarize,
   type SearchFilters,
 } from "./extract-filters";
+import { getCachedNlp, setCachedNlp } from "./nlp-cache";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -137,6 +138,9 @@ export async function conversationalSearch(
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return fallback(query);
 
+  const cached = await getCachedNlp(query, history);
+  if (cached) return cached;
+
   try {
     const res = await fetch(OPENAI_URL, {
       method: "POST",
@@ -169,12 +173,14 @@ export async function conversationalSearch(
     if (!parsed.success) return fallback(query);
 
     const filters = enrichSearchFilters(query, clean(parsed.data.filters));
-    return {
+    const result: ConversationalResult = {
       filters,
       summary: parsed.data.summary || summarize(filters),
       clarification: parsed.data.clarification ?? undefined,
       source: "openai",
     };
+    await setCachedNlp(query, history, result);
+    return result;
   } catch {
     return fallback(query);
   }
