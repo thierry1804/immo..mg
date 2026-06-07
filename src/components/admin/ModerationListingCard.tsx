@@ -2,7 +2,7 @@ import { formatPrice } from "@/lib/format";
 import { decodeHtmlEntities } from "@/lib/listing-location";
 import { PROPERTY_LABEL, sourceLabel } from "@/lib/moderation-labels";
 import ModerationActions from "./ModerationActions";
-import ModerationMapLink from "./ModerationMapLink";
+import ModerationPositionEditor from "./ModerationPositionEditor";
 import ModerationPhoto from "./ModerationPhoto";
 import Ico from "@/components/immo/Ico";
 
@@ -23,6 +23,7 @@ export type ModerationListing = {
   rooms: number;
   scrapedAt: Date | null;
   photos: string[];
+  locationManual: boolean;
 };
 
 function formatScrapedAt(d: Date | null): string {
@@ -136,17 +137,20 @@ export default function ModerationListingCard({
           </div>
 
           <div className="border-t border-line bg-paper-2/80 p-3">
-            <div className="grid gap-3 md:grid-cols-[minmax(0,220px)_1fr] md:items-center">
-              <ModerationMapLink
+            <div className="grid gap-3 md:grid-cols-[minmax(0,320px)_1fr] md:items-start">
+              <ModerationPositionEditor
                 listingId={listing.id}
                 lat={listing.lat}
                 lng={listing.lng}
                 fokontany={listing.fokontany}
+                manual={listing.locationManual}
               />
               <p className="text-xs leading-relaxed text-ink-2">
-                Vérifiez le quartier sur la mini-carte avant d&apos;approuver. La
-                position finale est recalculée depuis le titre (repères Paon
-                d&apos;Or, Antanetibe, etc.).
+                Vérifiez la position sur la carte. Si elle est incorrecte,
+                glissez le marqueur ou cliquez à l&apos;endroit exact : la
+                position est alors verrouillée et conservée à la validation.
+                Sinon, elle est (re)calculée automatiquement depuis le texte de
+                l&apos;annonce.
               </p>
             </div>
           </div>

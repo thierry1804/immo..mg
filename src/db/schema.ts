@@ -92,6 +92,9 @@ export const listings = pgTable(
     price: bigint("price", { mode: "number" }).notNull(),
     address: text("address").notNull(),
     location: geographyPoint("location").notNull(),
+    // Position fixée manuellement par un admin en modération : si true, la
+    // validation conserve ce point exact au lieu de relancer le géocodage auto.
+    locationManual: boolean("location_manual").notNull().default(false),
     status: listingStatus("status").notNull().default("active"),
     source: text("source").notNull().default("user"),
     externalUrl: text("external_url"),

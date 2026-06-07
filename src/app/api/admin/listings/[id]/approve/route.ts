@@ -28,6 +28,8 @@ export async function POST(
       title: listings.title,
       description: listings.description,
       address: listings.address,
+      fokontany: listings.fokontany,
+      locationManual: listings.locationManual,
       confidenceBreakdown: listings.confidenceBreakdown,
     })
     .from(listings)
@@ -39,38 +41,44 @@ export async function POST(
   }
 
   const row = rows[0];
-  const located = await resolveListingLocation({
-    title: row.title,
-    description: row.description,
-    address: row.address,
-  });
 
-  if (!located) {
-    return NextResponse.json(
-      {
-        error:
-          "Impossible de localiser le bien (quartier ou adresse trop vague).",
-      },
-      { status: 422 },
-    );
+  // Position fixée manuellement par l'admin → on la conserve telle quelle.
+  // Sinon on (re)calcule la meilleure position depuis le texte de l'annonce.
+  let fokontany = row.fokontany;
+  const set: Partial<typeof listings.$inferInsert> = {
+    status: "active",
+  };
+  if (!row.locationManual) {
+    const located = await resolveListingLocation({
+      title: row.title,
+      description: row.description,
+      address: row.address,
+    });
+    if (!located) {
+      return NextResponse.json(
+        {
+          error:
+            "Impossible de localiser le bien. Placez-le manuellement sur la carte puis réessayez.",
+        },
+        { status: 422 },
+      );
+    }
+    fokontany = located.fokontany;
+    set.address = located.address;
+    set.fokontany = located.fokontany;
+    set.location = { lng: located.lng, lat: located.lat };
   }
 
   let breakdown = (row.confidenceBreakdown ?? []) as ConfidenceCheck[];
-  if (located.fokontany) {
+  if (fokontany) {
     breakdown = markConfidenceCheck(breakdown, "fokontany");
   }
-  const confidenceScore = scoreFromBreakdown(breakdown);
+  set.confidenceBreakdown = breakdown;
+  set.confidenceScore = scoreFromBreakdown(breakdown);
 
   const result = await db
     .update(listings)
-    .set({
-      status: "active",
-      address: located.address,
-      fokontany: located.fokontany,
-      location: { lng: located.lng, lat: located.lat },
-      confidenceBreakdown: breakdown,
-      confidenceScore,
-    })
+    .set(set)
     .where(eq(listings.id, id))
     .returning({
       id: listings.id,

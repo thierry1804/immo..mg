@@ -47,6 +47,7 @@ export default async function ModerationPage({
       surfaceM2: propertyDetails.surfaceM2,
       rooms: propertyDetails.rooms,
       scrapedAt: listings.scrapedAt,
+      locationManual: listings.locationManual,
     })
     .from(listings)
     .innerJoin(propertyDetails, eq(propertyDetails.listingId, listings.id))
