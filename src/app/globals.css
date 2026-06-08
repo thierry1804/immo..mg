@@ -37,6 +37,11 @@
   --absent: oklch(0.66 0.1 70);
   --absent-bg: oklch(0.95 0.045 80);
 
+  /* Alerte (doublon / prix atypique) : rouge calme, jamais criard. */
+  --alert: oklch(0.55 0.15 28);
+  --alert-bg: oklch(0.95 0.04 30);
+  --alert-line: oklch(0.84 0.07 30);
+
   /* Shadows (always navy-tinted, never pure grey) */
   --shadow-card: 0 14px 30px -18px rgba(13, 33, 55, 0.22);
   --shadow-top-match: 0 0 0 1px var(--gold), 0 16px 34px -20px rgba(201, 168, 76, 0.5);
@@ -91,6 +96,9 @@
   --color-present-bg: var(--present-bg);
   --color-absent: var(--absent);
   --color-absent-bg: var(--absent-bg);
+  --color-alert: var(--alert);
+  --color-alert-bg: var(--alert-bg);
+  --color-alert-line: var(--alert-line);
 
   --shadow-card: var(--shadow-card);
   --shadow-top-match: var(--shadow-top-match);

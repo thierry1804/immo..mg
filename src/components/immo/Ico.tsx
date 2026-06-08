@@ -24,7 +24,12 @@ export type IcoName =
   | "wave"
   | "star"
   | "scale"
-  | "send";
+  | "send"
+  | "alert"
+  | "chevron"
+  | "doc"
+  | "image"
+  | "source";
 
 const PATHS: Record<IcoName, React.ReactNode> = {
   spark: <path d="M12 3v6m0 6v6m-9-9h6m6 0h6" />,
@@ -51,6 +56,35 @@ const PATHS: Record<IcoName, React.ReactNode> = {
   star: <path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17l-5.3 2.6 1.1-6L3.4 9.4l6-.8L12 3z" />,
   scale: <path d="M12 3v18M5 7h14M5 7l-2 6a3 3 0 006 0L7 7M19 7l-2 6a3 3 0 006 0l-2-6M8 21h8" />,
   send: <path d="M4 12l16-8-6 16-3-6-7-2z" />,
+  alert: (
+    <>
+      <path d="M12 4l9 16H3L12 4z" />
+      <path d="M12 10v4" strokeWidth={2.2} />
+      <path d="M12 17.5h0" strokeWidth={2.2} />
+    </>
+  ),
+  chevron: <path d="M6 9l6 6 6-6" />,
+  doc: (
+    <>
+      <path d="M7 3h7l4 4v14H7z" />
+      <path d="M14 3v4h4" />
+      <path d="M9.5 13h5M9.5 16.5h5" />
+    </>
+  ),
+  image: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="1.5" />
+      <circle cx="9" cy="10" r="1.4" />
+      <path d="M5 17l4.5-4.5 3 3 3-3L20 16" />
+    </>
+  ),
+  source: (
+    <>
+      <path d="M10 6H6v12h12v-4" />
+      <path d="M14 4h6v6" />
+      <path d="M20 4l-8.5 8.5" />
+    </>
+  ),
 };
 
 type Props = SVGProps<SVGSVGElement> & { name: IcoName; size?: number };

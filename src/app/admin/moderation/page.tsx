@@ -1,12 +1,13 @@
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import ModerationListingCard from "@/components/admin/ModerationListingCard";
+import ModerationFocusView from "@/components/admin/ModerationFocusView";
 import ModerationSourceFilters from "@/components/admin/ModerationSourceFilters";
 import Ico from "@/components/immo/Ico";
 import { db } from "@/db/client";
 import { listingPhotos, listings, propertyDetails } from "@/db/schema";
 import { getCurrentSession } from "@/lib/auth";
+import { decodeHtmlEntities } from "@/lib/listing-location";
 
 export default async function ModerationPage({
   searchParams,
@@ -48,6 +49,8 @@ export default async function ModerationPage({
       rooms: propertyDetails.rooms,
       scrapedAt: listings.scrapedAt,
       locationManual: listings.locationManual,
+      geoConfidence: listings.geoConfidence,
+      geoSource: listings.geoSource,
     })
     .from(listings)
     .innerJoin(propertyDetails, eq(propertyDetails.listingId, listings.id))
@@ -170,19 +173,19 @@ export default async function ModerationPage({
             </p>
           </div>
         ) : (
-          <ul className="space-y-6">
-            {rows.map((l) => (
-              <li key={l.id}>
-                <ModerationListingCard
-                  listing={{
-                    ...l,
-                    propertyType: l.propertyType,
-                    photos: photosByListing.get(l.id) ?? [],
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
+          <ModerationFocusView
+            listings={rows.map((l) => ({
+              ...l,
+              propertyType: l.propertyType,
+              title: decodeHtmlEntities(l.title),
+              description: decodeHtmlEntities(l.description),
+              photos: photosByListing.get(l.id) ?? [],
+              geo:
+                l.geoConfidence != null
+                  ? { confidence: l.geoConfidence, source: l.geoSource ?? "" }
+                  : null,
+            }))}
+          />
         )}
       </div>
     </div>
