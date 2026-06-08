@@ -7,6 +7,7 @@ import {
   mentionsAirport,
   type Landmark,
 } from "@/lib/landmarks";
+import { cityViewbox, isBareCityName, matchCityMg } from "@/lib/places-mg";
 import { geocode } from "@/scrapers/geocode";
 
 export type ListingLocationInput = {
@@ -15,11 +16,31 @@ export type ListingLocationInput = {
   address: string;
 };
 
+/** Niveau de précision du géocodage → confiance affichée en modération. */
+export type GeoPrecision =
+  | "landmark"
+  | "proximity"
+  | "neighborhood"
+  | "city"
+  | "region";
+
+const PRECISION: Record<GeoPrecision, { confidence: number; source: string }> = {
+  landmark: { confidence: 92, source: "Repère localisé" },
+  proximity: { confidence: 80, source: "Proximité d'un lieu nommé" },
+  neighborhood: { confidence: 70, source: "Quartier reconnu" },
+  city: { confidence: 50, source: "Ville seule — point approximatif" },
+  region: { confidence: 35, source: "Zone large — point approximatif" },
+};
+
 export type ResolvedListingLocation = {
   lng: number;
   lat: number;
   fokontany: string | null;
   address: string;
+  /** Confiance du géocodage 0–100. */
+  confidence: number;
+  /** Libellé lisible de la méthode de résolution. */
+  source: string;
 };
 
 const GENERIC_ADDRESS =
@@ -119,6 +140,21 @@ function areaLabelFromText(
   return matchFokontanyByName(text) ?? fallback;
 }
 
+function withConf(
+  base: { lng: number; lat: number; fokontany: string | null; address: string },
+  precision: GeoPrecision,
+): ResolvedListingLocation {
+  return { ...base, ...PRECISION[precision] };
+}
+
+/** Requête Nominatim scopée sur la ville détectée (plus de biais Tana forcé). */
+export function buildScopedQuery(phrase: string, cityName: string): string {
+  const p = phrase.trim();
+  if (/madagascar/i.test(p)) return p;
+  if (/antananarivo|tananarive/i.test(p)) return `${p}, Madagascar`;
+  return `${p}, ${cityName}, Madagascar`;
+}
+
 function fromLandmark(
   lm: Landmark,
   phrase: string | null,
@@ -126,12 +162,15 @@ function fromLandmark(
 ): ResolvedListingLocation {
   const area = areaLabelFromText(phrase, text, lm.fokontany);
   const address = `${area}, près de ${lm.name}, Antananarivo`;
-  return {
-    lng: lm.lng,
-    lat: lm.lat,
-    fokontany: lm.fokontany,
-    address: address.slice(0, 500),
-  };
+  return withConf(
+    {
+      lng: lm.lng,
+      lat: lm.lat,
+      fokontany: lm.fokontany,
+      address: address.slice(0, 500),
+    },
+    "landmark",
+  );
 }
 
 function fromCoord(
@@ -140,21 +179,26 @@ function fromCoord(
     phrase?: string | null;
     text: string;
     address: string;
+    cityName: string;
+    precision: GeoPrecision;
   },
 ): ResolvedListingLocation {
   const fokontany =
     matchFokontanyByName(opts.text) ?? resolveFokontany(coord.lng, coord.lat);
   const displayAddress = opts.phrase
-    ? `${opts.phrase}, Antananarivo`
+    ? `${opts.phrase}, ${opts.cityName}`
     : fokontany
-      ? `${fokontany}, Antananarivo`
+      ? `${fokontany}, ${opts.cityName}`
       : opts.address;
-  return {
-    lng: coord.lng,
-    lat: coord.lat,
-    fokontany,
-    address: displayAddress.slice(0, 500),
-  };
+  return withConf(
+    {
+      lng: coord.lng,
+      lat: coord.lat,
+      fokontany,
+      address: displayAddress.slice(0, 500),
+    },
+    opts.precision,
+  );
 }
 
 /** Requête Nominatim la plus précise possible à partir du texte annonce. */
@@ -207,15 +251,31 @@ export async function resolveListingLocation(
   const text = `${title} ${description ?? ""} ${address}`;
   const phrase = extractLocationPhrase(title, description);
 
+  // Ville détectée : hors Antananarivo, on scope le géocodage dessus et on
+  // peut retomber sur son centre plutôt que sur la capitale.
+  const city = matchCityMg(text);
+  const isProvince = Boolean(city) && city!.name !== "Antananarivo";
+  const cityName = isProvince ? city!.name : "Antananarivo";
+  const cityOpts = isProvince ? { viewbox: cityViewbox(city!) } : {};
+
   const nearTarget = extractProximityTarget(text);
   if (nearTarget) {
     const lmFromNear = matchLandmark(nearTarget) ?? matchLandmark(text);
     if (lmFromNear) {
       return fromLandmark(lmFromNear, phrase, text);
     }
-    const nearCoord = await geocode(buildGeocodeQuery(`${nearTarget}, Antananarivo`));
+    const nearCoord = await geocode(
+      buildScopedQuery(nearTarget, cityName),
+      cityOpts,
+    );
     if (nearCoord && !shouldRejectAirportCoord(nearCoord, text)) {
-      return fromCoord(nearCoord, { phrase: nearTarget, text, address });
+      return fromCoord(nearCoord, {
+        phrase: nearTarget,
+        text,
+        address,
+        cityName,
+        precision: "proximity",
+      });
     }
   }
 
@@ -224,43 +284,55 @@ export async function resolveListingLocation(
     return fromLandmark(landmark, phrase, text);
   }
 
-  const preciseQuery = buildPreciseGeocodeQuery(title, description, phrase);
-  const queries: string[] = [];
-  // Lieu issu du suffixe de titre (ville/quartier) : géocodage Madagascar entier,
-  // sans forcer Antananarivo — c'est le signal le plus fiable pour CoinAfrique.
+  // Lieux candidats à géocoder, avec la part « lieu » servant à juger la précision.
+  const queries: { q: string; placePart: string }[] = [];
+  // Lieu issu du suffixe de titre (ville/quartier) : géocodage Madagascar entier
+  // (le plus fiable pour CoinAfrique), contraint au viewbox ville si province.
   const titlePlace = extractTitlePlace(input.title);
   if (titlePlace) {
-    queries.push(`${titlePlace}, Madagascar`);
-    // Repli ville : « Toamasina Foulpointe » → « Toamasina ». Le premier mot est
-    // en général la ville ; les petits villages échouent au filtre d'importance.
-    const city = titlePlace.split(/\s+/)[0];
-    if (city.length >= 4 && city.toLowerCase() !== titlePlace.toLowerCase()) {
-      queries.push(`${city}, Madagascar`);
+    queries.push({ q: `${titlePlace}, Madagascar`, placePart: titlePlace });
+    // Repli ville : « Toamasina Foulpointe » → « Toamasina ».
+    const cityWord = titlePlace.split(/\s+/)[0];
+    if (cityWord.length >= 4 && cityWord.toLowerCase() !== titlePlace.toLowerCase()) {
+      queries.push({ q: `${cityWord}, Madagascar`, placePart: cityWord });
     }
   }
-  if (preciseQuery) queries.push(preciseQuery);
-  if (phrase && !queries.includes(buildGeocodeQuery(phrase))) {
-    queries.push(buildGeocodeQuery(phrase));
+  // Requête précise (repère/rue Tana) : pertinente seulement hors province.
+  if (!isProvince) {
+    const preciseQuery = buildPreciseGeocodeQuery(title, description, phrase);
+    if (preciseQuery) {
+      queries.push({ q: preciseQuery, placePart: phrase ?? preciseQuery });
+    }
+  }
+  if (phrase) {
+    const sq = buildScopedQuery(phrase, cityName);
+    if (!queries.some((x) => x.q === sq)) queries.push({ q: sq, placePart: phrase });
   }
   if (!isGenericAddress(address)) {
-    queries.push(buildGeocodeQuery(address));
+    queries.push({ q: buildScopedQuery(address, cityName), placePart: address });
   }
 
-  for (const q of queries) {
-    const coord = await geocode(q);
+  for (const { q, placePart } of queries) {
+    const coord = await geocode(q, cityOpts);
     if (!coord || shouldRejectAirportCoord(coord, text)) continue;
-    return fromCoord(coord, { phrase, text, address });
+    const precision: GeoPrecision = isBareCityName(placePart)
+      ? "city"
+      : "neighborhood";
+    return fromCoord(coord, { phrase, text, address, cityName, precision });
   }
 
   const fokName = matchFokontanyByName(text);
   if (fokName) {
     if (fokName === "Ivato" && /antanetibe/i.test(text)) {
       const ant = fokontanyCentroid("Antanetibe");
-      return {
-        ...ant,
-        fokontany: "Antanetibe",
-        address: `${phrase ?? "Antanetibe Ivato"}, Antananarivo`,
-      };
+      return withConf(
+        {
+          ...ant,
+          fokontany: "Antanetibe",
+          address: `${phrase ?? "Antanetibe Ivato"}, Antananarivo`,
+        },
+        "neighborhood",
+      );
     }
     const { lng, lat } = fokontanyCentroid(fokName);
     if (isNearIvatoAirport(lng, lat) && !mentionsAirport(text)) {
@@ -269,12 +341,28 @@ export async function resolveListingLocation(
         return fromLandmark(antLm, phrase, text);
       }
     }
-    return {
-      lng,
-      lat,
-      fokontany: fokName,
-      address: `${phrase ?? fokName}, Antananarivo`,
-    };
+    return withConf(
+      {
+        lng,
+        lat,
+        fokontany: fokName,
+        address: `${phrase ?? fokName}, Antananarivo`,
+      },
+      "neighborhood",
+    );
+  }
+
+  // Repli province : mieux vaut le centre de la ville que Tana — ou que rien.
+  if (isProvince) {
+    return withConf(
+      {
+        lng: city!.lng,
+        lat: city!.lat,
+        fokontany: null,
+        address: `${cityName}, Madagascar`,
+      },
+      "city",
+    );
   }
 
   return null;

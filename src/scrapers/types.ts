@@ -38,6 +38,8 @@ export type NormalizedListing = {
   rawHash: string;
   amenities: Amenity[];
   fokontany: string | null;
+  geoConfidence: number;
+  geoSource: string;
 };
 
 export interface Scraper {

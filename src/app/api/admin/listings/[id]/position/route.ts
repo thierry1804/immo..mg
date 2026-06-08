@@ -69,6 +69,8 @@ export async function POST(
         fokontany: located.fokontany,
         address: located.address,
         locationManual: false,
+        geoConfidence: located.confidence,
+        geoSource: located.source,
       })
       .where(eq(listings.id, id))
       .returning({ id: listings.id });
@@ -93,6 +95,8 @@ export async function POST(
       location: { lng, lat },
       fokontany,
       locationManual: true,
+      geoConfidence: 100,
+      geoSource: "Position corrigée manuellement",
     })
     .where(eq(listings.id, id))
     .returning({ id: listings.id });

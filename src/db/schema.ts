@@ -102,6 +102,10 @@ export const listings = pgTable(
     scrapedAt: timestamp("scraped_at", { withTimezone: true }),
     rawHash: text("raw_hash"),
     fokontany: text("fokontany"),
+    // Confiance du géocodage automatique (0–100) + libellé de la méthode.
+    // Alimente l'anneau de confiance de la modération (vue Focus).
+    geoConfidence: integer("geo_confidence"),
+    geoSource: text("geo_source"),
     amenities: text("amenities").array().notNull().default([]),
     confidenceScore: integer("confidence_score"),
     confidenceBreakdown: jsonb("confidence_breakdown").$type<

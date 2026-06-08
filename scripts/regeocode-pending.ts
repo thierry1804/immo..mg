@@ -63,6 +63,8 @@ async function main() {
           address: located.address,
           fokontany: located.fokontany,
           location: { lng: located.lng, lat: located.lat },
+          geoConfidence: located.confidence,
+          geoSource: located.source,
         })
         .where(eq(listings.id, row.id));
       console.log(

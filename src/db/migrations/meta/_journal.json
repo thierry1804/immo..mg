@@ -64,6 +64,13 @@
       "when": 1780600000000,
       "tag": "0008_location_manual",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780941922701,
+      "tag": "0009_slow_the_hunter",
+      "breakpoints": true
     }
   ]
 }

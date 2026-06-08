@@ -67,6 +67,8 @@ export async function POST(
     set.address = located.address;
     set.fokontany = located.fokontany;
     set.location = { lng: located.lng, lat: located.lat };
+    set.geoConfidence = located.confidence;
+    set.geoSource = located.source;
   }
 
   let breakdown = (row.confidenceBreakdown ?? []) as ConfidenceCheck[];

@@ -29,24 +29,31 @@ type NominatimResult = { lon: string; lat: string; importance?: number };
 
 const NOMINATIM_TIMEOUT_MS = 15_000;
 
-export function buildNominatimUrl(
-  query: string,
-  opts: { biasTana?: boolean } = {},
-): URL {
+export type GeocodeOpts = { biasTana?: boolean; viewbox?: string };
+
+/** Viewbox effectif : explicite > biais Tana > aucun. */
+function resolveViewbox(opts: GeocodeOpts): string | null {
+  if (opts.viewbox) return opts.viewbox;
+  if (opts.biasTana) return TANA_VIEWBOX;
+  return null;
+}
+
+export function buildNominatimUrl(query: string, opts: GeocodeOpts = {}): URL {
   const url = new URL(`${NOMINATIM_URL}/search`);
   url.searchParams.set("q", query);
   url.searchParams.set("format", "json");
   url.searchParams.set("limit", "1");
   url.searchParams.set("countrycodes", "mg");
   url.searchParams.set("addressdetails", "0");
-  if (opts.biasTana) {
-    url.searchParams.set("viewbox", TANA_VIEWBOX);
+  const viewbox = resolveViewbox(opts);
+  if (viewbox) {
+    url.searchParams.set("viewbox", viewbox);
     url.searchParams.set("bounded", "1");
   }
   return url;
 }
 
-const callNominatim = throttle(async (query: string, opts: { biasTana?: boolean } = {}) => {
+const callNominatim = throttle(async (query: string, opts: GeocodeOpts = {}) => {
   const url = buildNominatimUrl(query, opts);
   try {
     const res = await fetch(url, {
@@ -57,10 +64,10 @@ const callNominatim = throttle(async (query: string, opts: { biasTana?: boolean 
     const body = (await res.json()) as NominatimResult[];
     if (body.length === 0) return null;
     const first = body[0];
-    // Avec viewbox+bounded (biais Tana), le résultat est déjà contraint géographiquement ;
-    // ne pas rejeter sur importance (ex. « gare Soarano » → POI OSM à faible score).
+    // Avec viewbox+bounded, le résultat est déjà contraint géographiquement ;
+    // ne pas rejeter sur importance (ex. « gare Soarano » → POI OSM faible score).
     if (
-      !opts.biasTana &&
+      !resolveViewbox(opts) &&
       typeof first.importance === "number" &&
       first.importance < MIN_IMPORTANCE
     ) {
@@ -79,13 +86,20 @@ const callNominatim = throttle(async (query: string, opts: { biasTana?: boolean 
 
 export async function geocode(
   address: string,
-  opts: { biasTana?: boolean } = {},
+  opts: GeocodeOpts = {},
 ): Promise<{ lng: number; lat: number } | null> {
   const query = address.trim();
   if (!query) return null;
-  const key = hash(query + (opts.biasTana ? "|tana" : ""));
+  const viewbox = resolveViewbox(opts);
+  const key = hash(query + (viewbox ? `|vb:${viewbox}` : ""));
 
   if (memoryCache.has(key)) return memoryCache.get(key) ?? null;
+
+  // Mode hors-réseau (tests/CI) : ni réseau ni cache DB.
+  if (process.env.GEOCODE_SKIP_NETWORK === "true") {
+    memoryCache.set(key, null);
+    return null;
+  }
 
   const cached = await db
     .select()
@@ -96,11 +110,6 @@ export async function geocode(
     const found = { lng: cached[0].lng, lat: cached[0].lat };
     memoryCache.set(key, found);
     return found;
-  }
-
-  if (process.env.GEOCODE_SKIP_NETWORK === "true") {
-    memoryCache.set(key, null);
-    return null;
   }
 
   const queryWithCountry = /madagascar/i.test(query)

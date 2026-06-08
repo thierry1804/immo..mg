@@ -108,5 +108,7 @@ export async function normalizeListing(
     rawHash: hashRawListing(raw),
     amenities,
     fokontany: located.fokontany,
+    geoConfidence: located.confidence,
+    geoSource: located.source,
   };
 }

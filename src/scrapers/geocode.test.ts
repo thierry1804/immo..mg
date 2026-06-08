@@ -12,4 +12,12 @@ describe("buildNominatimUrl", () => {
     const url = buildNominatimUrl("antsirabe", {});
     expect(url.searchParams.get("viewbox")).toBeNull();
   });
+
+  it("applique un viewbox arbitraire (biais ville de province)", () => {
+    const url = buildNominatimUrl("bord de mer", {
+      viewbox: "46.20,-15.83,46.44,-15.59",
+    });
+    expect(url.searchParams.get("viewbox")).toBe("46.20,-15.83,46.44,-15.59");
+    expect(url.searchParams.get("bounded")).toBe("1");
+  });
 });

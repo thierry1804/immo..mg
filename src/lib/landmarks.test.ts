@@ -30,6 +30,46 @@ describe("extractProximityTarget", () => {
       ),
     ).toMatch(/PAON D'OR/i);
   });
+
+  it("extrait la cible après « à N min de »", () => {
+    expect(
+      extractProximityTarget("Villa à 5 min de l'école Saint-Michel"),
+    ).toMatch(/école Saint-Michel/i);
+  });
+
+  it("extrait après « à N minutes en voiture de »", () => {
+    expect(
+      extractProximityTarget("Maison à 10 minutes en voiture de la gare"),
+    ).toMatch(/^gare$/i);
+  });
+
+  it("extrait après « à N km de »", () => {
+    expect(
+      extractProximityTarget("Terrain à 2 km du lycée français"),
+    ).toMatch(/lycée français/i);
+  });
+
+  it("extrait après « en face de »", () => {
+    expect(
+      extractProximityTarget("Studio en face de l'université d'Ankatso"),
+    ).toMatch(/université d'Ankatso/i);
+  });
+
+  it("extrait après « non loin de »", () => {
+    expect(
+      extractProximityTarget("Appartement non loin du marché central"),
+    ).toMatch(/marché central/i);
+  });
+
+  it("extrait après « derrière »", () => {
+    expect(
+      extractProximityTarget("Maison derrière le stade municipal"),
+    ).toMatch(/stade municipal/i);
+  });
+
+  it("retire l'article de tête (« de la gare » → « gare »)", () => {
+    expect(extractProximityTarget("à côté de la gare")).toBe("gare");
+  });
 });
 
 describe("isNearIvatoAirport", () => {
