@@ -52,7 +52,16 @@ function buildGeocodeQuery(place: string): string {
 export async function geocodePlace(
   place: string,
 ): Promise<{ lng: number; lat: number } | null> {
-  return geocode(buildGeocodeQuery(place), { biasTana: true });
+  // Retire l'article/bruit de tête (« la primature » → « primature ») : un
+  // nearLabel issu du LLM n'est pas passé par extractPlacePhrase, et Nominatim
+  // ne retrouve pas un POI précédé de son article.
+  const cleaned = stripLeadingNoise(place) || place;
+  // 1) Biaisé sur la capitale (contraint) — le plus précis pour un lieu de Tana.
+  const inTana = await geocode(buildGeocodeQuery(cleaned), { biasTana: true });
+  if (inTana) return inTana;
+  // 2) Repli national souple — trouve un POI hors du cadre strict de Tana
+  //    (province, bordure) sans rejeter sur le score d'importance.
+  return geocode(`${cleaned}, Madagascar`, { lenient: true });
 }
 
 /**

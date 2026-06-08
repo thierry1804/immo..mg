@@ -66,6 +66,15 @@ describe("geocodePlace", () => {
       { biasTana: true },
     );
   });
+
+  it("retire l'article de tête (« la primature » → « primature »)", async () => {
+    vi.mocked(geocode).mockResolvedValueOnce({ lng: 47.546, lat: -18.944 });
+    await geocodePlace("la primature");
+    expect(geocode).toHaveBeenCalledWith(
+      "primature, Antananarivo, Madagascar",
+      { biasTana: true },
+    );
+  });
 });
 
 describe("resolveSearchPlace", () => {
